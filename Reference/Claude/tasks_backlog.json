@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "last_updated": "2026-04-09",
+    "last_updated_note": "REMOVED t3-cps-init-skill-md-truncation — folded into the same-session t1-cps-init-restore-docs-dir rev 2 fix and logged as completed.",
+    "completions_since_reprioritization": 0,
+    "last_reprioritized": "2026-04-09",
+    "reprioritization_strategy": "dependency-first"
+  },
+  "tasks": [
+    {
+      "id": "t3-cps-test-remove-namespace-isolation",
+      "title": "Remove tautological namespace_isolation test from cps_test_suite.py",
+      "tier": "T3",
+      "status": "pending",
+      "description": "Post rev 11 namespace is a display label only. The namespace_isolation test asserts len(text)>20 and passes on any corpus with matching text. Dead test.",
+      "depends_on": [],
+      "unblocks": []
+    }
+  ]
+}

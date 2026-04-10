@@ -1,0 +1,49 @@
+# CPS runtime state — churns constantly, not source
+.cps/*.db
+.cps/*.db-wal
+.cps/*.db-shm
+.cps/*.log
+.cps/cache/
+.cps/__pycache__/
+# Self-hosted Python copies — canonical source is in Runtime/
+.cps/*.py
+# Ingest manifest — transient, useless without the db
+.cps/cps_manifest.json
+# FUSE mount artifacts
+.cps/.fuse_hidden*
+.fuse_hidden*
+
+# Scratchpads — not source
+cps-c-scratch.txt
+*.scratch.txt
+
+# Session summaries — transient per-session artifacts
+session-summary-*.md
+
+# Claude generated deliverables — regenerable, not source
+Output/
+
+# PDF preprocessing artifacts — intermediate files only
+PDF2Text/
+
+# Python cruft
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor / OS cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Local auth artifacts — never commit
+.gh_token
+.env

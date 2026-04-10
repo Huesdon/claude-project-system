@@ -1,0 +1,61 @@
+2026-04-07 | t1-cps-validation | Run CPS test suite and validate installation
+2026-04-08 | t2-installer-runtime-table | Installer Step 11.6 should also inject a Runtime Files table into new project CLAUDE.md
+2026-04-08 | t2-cache-onnx-model-outside-cps | Cache ONNX model at ~/.cps/models so reinstalls don't re-download 90MB
+2026-04-08 | t1-runtime-deployed-divergence | Runtime/.cps auto-sync on ingest (rev 8)
+2026-04-08 | t2-installer-skip-present-if-installed | Installer Step 11 should skip presenting sub-skills already in global skills list
+2026-04-08 | t2-installer-rebuild-rev7 | Rebuild cps-installer.skill as rev 7 with patched cps_embedder.py bundled in
+2026-04-08 | t2-cps-deps-missing-in-cowork-sandbox | CPS server now self-bootstraps deps at import (rev 9 / phase 8.7)
+2026-04-08 | t3-cowork-dep-persistence-investigation | Investigation complete — .cps/deps/ + PYTHONPATH recommended (14.5x warm / ~80x cold speedup); findings in Reference/CPS_Dep_Persistence_Investigation.md; implementation queued as t2-installer-deps-bundle-implementation
+2026-04-08 | t1-cps-init-validate | Validate cps-init stub against a fresh test project
+2026-04-08 | t1-cps-design-update | Update CPS_Design.md to drop lite/runtime gating and add Core->Full upgrade path
+2026-04-08 | t1-cps-setup-build | Build cps-setup.skill — menu-driven Core|Full installer
+2026-04-08 | t3-purge-stale-cps-platform-namespace | Remove orphaned cps-platform entry from ~/.cps/projects.json registry (obsolete — rev 11 deleted ProjectRegistry)
+2026-04-08 | t3-mcp-bootstrap-under-cowork | Investigate cps_* tools absent from Cowork session manifest despite rev 8.7 bootstrap (obsolete — rev 11 replaced _bootstrap_deps with cps-setup menu)
+2026-04-08 | t1-cps-capture-build | Build cps-capture.skill from scratch per CLAUDE.md §12 taxonomy
+2026-04-08 | t1-cps-setup-runtime-sync | Verify cps-setup bundled runtime matches current Runtime rev 11
+2026-04-08 | t1-cps-init-truncation-fix | Fix cps-init SKILL.md truncation + rebundle cps-init.skill
+2026-04-08 | t1-cps-project-scaffold-repair | Scaffold CPS project Reference buckets + copy Capture Taxonomy
+2026-04-08 | t1-cps-init-verify | Verify cps-init writes Core/Full scaffold per CPS_Design.md §4.2
+2026-04-09 | t1-cps-init-shutil-perms-bug | Fix cps-init shutil.copy2 propagating read-only perms from templates/
+2026-04-09 | t1-cps-setup-in-session-sim | Run in-session simulation of cps-setup.skill Core + Upgrade to Full
+2026-04-09 | t1-cps-setup-rebundle-runtime | Rebundle 5 runtime .py files into cps-setup.skill + add py_compile gate
+2026-04-09 | t1-skills-folder-sync | Rebundle cps-init, task, cps-capture, cps-setup into CPS/Skills/
+2026-04-09 | t1-cps-setup-add-model-prefetch | Add ONNX model pre-fetch step to cps-setup (Step 12.5)
+2026-04-09 | t1-cps-setup-validate | End-to-end validate cps-setup.skill on a fresh Cowork project
+2026-04-09 | t2-cps-server-md-lines-counter | Fix cps_server complexity calculator md_lines=0 on fresh ingest (obsoleted by gear rip)
+2026-04-09 | t1-cps-server-rip-gear-code | Rip dead gear/complexity code from cps_server.py (rev 13)
+2026-04-09 | t1-cps-runtime-selfheal-lies | Fix runtime dependency self-heal reporting false success
+2026-04-09 | t2-cps-cli-json-contract-verify | Verify cps_server.py CLI mode emits clean JSON on stdout
+2026-04-09 | t1-cps-skills-rewrite-to-cli-subprocess | Rewrite cps-query/cps-refresh/cps-capture to subprocess CLI calls
+2026-04-09 | t2-cps-setup-drop-step11 | Delete cps-setup Step 11 (.mcp.json wiring) and mcp.json.template
+2026-04-09 | t2-cps-claudemd-section8-rewrite | Rewrite CLAUDE.md §8 Session Startup Protocol to drop MCP probes
+2026-04-09 | t2-cps-workflow-rebundle-on-runtime-edit | Workflow rule: rebundle cps-setup.skill after any Runtime/ edit before session close
+2026-04-09 | t2-cps-setup-live-validate-rev4 | Live-run validate cps-setup.skill rev 4 on a real Cowork project
+2026-04-09 | t2-cps-setup-rebundle-pycompile | Rebundle 5 runtime .py files into cps-setup.skill + add py_compile gate
+2026-04-09 | t2-cps-setup-doc-polish | cps-setup SKILL.md polish: Step 10 default-on paths + Step 13 cwd note
+2026-04-09 | t1-cps-design-rev4 | Bump CPS_Design.md to rev 4: add Documentation/ + Documentation/md/ to cps-init §4.2 scope; rewrite §4.5 rationale
+2026-04-09 | t1-cps-init-restore-docs-dir | [REGRESSION] cps-init rev 2: add Documentation/ + Documentation/md/ to Step 2 per CPS_Design.md rev 4 §4.2 + fix trailing SKILL.md truncation; rebundle Skills/cps-init.skill
+2026-04-09 | t1-cps-init-trailing-truncation | cps-init SKILL.md trailing truncation fix folded into rev 2 (was T3 t3-cps-init-skill-md-truncation in backlog — promoted to T1 same-session and completed)
+2026-04-09 | t1-cps-setup-bundle-stale-cli | cps-setup rev 7: Step 10 disk-presence gating; rebundled stale pre-rev-14 MCP-era cps-query.skill + cps-refresh.skill (now matches standalone CLI versions); fixed trailing SKILL.md truncation; replaced Skills/cps-setup.skill
+2026-04-09 | t2-cps-server-strip-d3-baggage | Gate or strip Phase 7a/7b D3 engagement_id and persona allowlist code
+2026-04-09 | t2-cps-init-patch-install-verify | Install patched cps-init.skill and verify REPAIRED stub detection on MSB | split: MSB verify deferred to t2-cps-init-msb-verify
+2026-04-09 | t2-cps-init-msb-verify | Verify patched cps-init REPAIRED classification in MSB session
+2026-04-09 | t2-cps-init-skill-rewrite | Rewrite cps-init.skill as wrapper prompting user to run cps-scaffold.cmd
+2026-04-09 | t2-cps-setup-drop-step11 | Delete cps-setup Step 11 (.mcp.json wiring) and mcp.json.template
+2026-04-09 | t2-cps-installer-deprecate | Archive cps-installer.skill and redirect to cps-setup
+2026-04-09 | t2-cps-claudemd-rev | Bump CPS/CLAUDE.md to rev 13 with two-profile model | STALE — already completed in revs 13-16
+2026-04-09 | t2-cps-docs-rewrite | Rewrite Setup Guide and Troubleshooting Guide for Core|Full model
+2026-04-10 | t1-cps-patcher-validation | Validate cps-patcher skill on real downstream project
+2026-04-10 | t1-ideas-roadmap-task-promotion-loop | Integrate Ideas→Roadmap→Tasks promotion loop into task manager empty-state flow
+2026-04-10 | t1-cps-patcher-skill | Create CPS project patcher skill
+2026-04-10 | t1-knowledge-buckets-ideas-roadmap | Add Ideas and Roadmap knowledge buckets to CPS with capture and promotion flow
+2026-04-10 | t2-cps-init-scaffold-ideas-roadmap | Update cps-init to scaffold Ideas and Roadmap bucket directories
+2026-04-10 | t2-patch-catalog-audit | Audit existing CPS features for missing patch catalog entries
+2026-04-10 | t2-ps1-core-section-rev-mismatch | Fix cps-scaffold.ps1 CoreSectionRev mismatch
+2026-04-10 | t2-task-patcher-gate | Add requires_patch flag to task schema + task COMPLETE gate
+2026-04-10 | t3-cps-init-stale-ref-grep | Grep for stale 'double-click the cmd' references across Skills/, Documentation/, Reference/
+2026-04-10 | t1-validate-patcher-log | Validate patcher log
+2026-04-10 | t3-cps-setup-skill-md-wording | Update cps-setup SKILL.md Step 6 wording to reference Python scaffolder path explicitly
+2026-04-10 | t3-deployment-checklist-stale | Update CPS_Deployment_Checklist.md to remove stale references
+2026-04-10 | t3-design-doc-directory-list | Update CPS_Design.md §4.2 directory list to include all scaffold dirs
+2026-04-10 | t3-scaffold-bundle-assertion | Add bundle-time assertion: cps_scaffold.py and cps-scaffold.ps1 template strings match

@@ -1,0 +1,24 @@
+# CPS Phase History
+
+> Externalized from CLAUDE.md §6 on 2026-04-08 to reduce per-session token cost. Consult only when historical context is needed.
+
+| Phase | Features | Status |
+|-------|----------|--------|
+| 1 | Core: MCP server, markdown chunker, ONNX embedder, sqlite-vec search | Complete |
+| 2 | Skills: cps-init, cps-query, cps-refresh packaged as .skill files | Complete (cps-init superseded by cps-installer rev 3) |
+| 3 | Semantic cache (SQLite-backed), knowledge graph, enhanced cps_status | Complete |
+| 4 | Targeted refresh, completion-triggered workflows | Complete |
+| 5 | EM integration: Step 0 detection, Tier 1 cps_prime, Tier 2 CPS-first query | Complete |
+| 5.1 | JSON array chunking, stale chunk purge, prime query personalization | Complete |
+| 6 | Platform packaging: cps-platform meta-installer, setup guide, troubleshooting | Complete (cps-platform superseded by cps-installer rev 3) |
+| 7 | OQ resolutions: engagement ID cache isolation, dynamic persona allowlists, bracket-balance repair | Complete |
+| 8 | Multi-tenant: namespace prefix, ProjectRegistry, cps_search_cross, cps-installer.skill | Complete |
+| 8.1 | cps-installer rev 3: absorbs cps-init, adds task module bootstrap (§11.5), adds cps_test_suite halting gate (§13), drops cps-init.skill from bundle | Complete |
+| 8.2 | cps-installer rev 4: adds Step 11.6 CLAUDE.md injection (House Rules + Step 0 detection + cps_prime warmup + cps_graph_build cadence + cross-search isolation rule); idempotent via HTML-comment markers | Complete |
+| 8.3 | cps-installer rev 5: bundled cps_graph.py patched to fix _add_edge double-counting (returns bool, callers gate stat increment); bundled cps-query/cps-refresh SKILL.md scrubbed of stale cps-init references and pointed at cps-installer instead | Complete |
+| 8.4 | cps-installer rev 6: Step 11.6 now injects a second independent block `<!-- CPS:RUNTIME-MANIFEST -->` listing the 5 runtime files (`cps_server.py`, `cps_chunker.py`, `cps_embedder.py`, `cps_graph.py`, `cps_test_suite.py`) plus pip install line; sits immediately after the STARTUP-PROTOCOL block; Step 12 validates both markers independently (either missing is a hard fail when CLAUDE.md exists); three-state echo per block so reruns append only the missing one | Complete |
+| 8.5 | Runtime `cps_embedder.py` model cache moved to shared `~/.cps/models/all-MiniLM-L6-v2/` (was project-local `Runtime/models/`); first run auto-migrates legacy cache via `shutil.move`; saves a 90MB re-download per new project deployment on the same machine. Bundled installer copy of `cps_embedder.py` NOT yet patched — tracked as `t2-installer-rebuild-rev7`. | Complete |
+| 8.6 | `IngestPipeline.sync_runtime_to_cps()` added — runs at the top of `_tool_ingest`, SHA-256-compares the 5 canonical `Runtime/*.py` files against `.cps/*.py`, and promotes any drifted file via `Path.write_bytes()` (inode-preserving). Self-hosting only: no-op when `Runtime/` does not exist next to `.cps/`. Closes `t1-runtime-deployed-divergence`. Initial drift on `cps_embedder.py` and `cps_server.py` healed manually in this session before the auto-sync took over. Tier 2 (bundled installer copies) still requires the `t2-installer-rebuild-rev7` rebuild. | Complete |
+| 8.7 | `cps_server.py` now runs `_bootstrap_deps()` at module import (before `import sqlite_vec`, `import numpy`). Detects missing deps via try/except ImportError and reinstalls `sqlite-vec huggingface-hub tokenizers onnxruntime numpy --break-system-packages -q` via subprocess. Closes the silent MCP handshake failure when Cowork sandbox resets pip-installed packages between sessions. Mirrors the bootstrap pattern that has lived in `cps_test_suite.py` since rev 1. Bundled installer copy still needs the same patch — tracked as `t2-installer-rebuild-rev8`. Troubleshooting Guide gained a new "cps_* tools silently missing from session" entry. | Complete |
+
+**Tested numbers (D3 project):** 132 files scanned, 1097 chunks, 220K tokens indexed. Average chunk: ~201 tokens. Typical 5-result query: ~1K tokens vs 3K–12K for raw file reads.

@@ -1,0 +1,17 @@
+{
+  "cps_dir": ".cps",
+  "project_root": ".",
+  "namespace": "claude-project-system",
+  "source_paths": [
+    "Documentation/md/**/*.md",
+    "Reference/**/*.md",
+    "Input/**/*.md",
+    "Source/**/*.py"
+  ],
+  "embedding_model": "all-MiniLM-L6-v2",
+  "embedding_dim": 384,
+  "chunk_min_tokens": 50,
+  "chunk_max_tokens": 2000,
+  "search_default_limit": 5,
+  "cache": {"similarity_threshold": 0.05, "max_age_hours": 24}
+}

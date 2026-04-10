@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "last_updated": "2026-04-10",
+    "last_updated_note": "completed t3-scaffold-bundle-assertion",
+    "completions_since_reprioritization": 6,
+    "reprioritize_threshold": 10,
+    "last_reprioritized": "2026-04-10",
+    "reprioritization_strategy": "dependency-first"
+  },
+  "tasks": []
+}
