@@ -158,11 +158,15 @@ At session start, read `Reference/Claude/tasks.json` and surface the top 1–3 a
 
 ### Immediate Completion (MANDATORY)
 
-When a task is fully done — all steps finished, files written, docs propagated — call `task COMPLETE` immediately. Do **not** wait for session close or explicit user instruction. COMPLETE is authoritative: the task is removed from `tasks.json` and a line is appended to `tasks_completed.log`. If you mark the wrong task by mistake, recover via `task ADD`; the log preserves history. Never leave a finished task in `pending` or `in_progress` between work items — `tasks.json` must stay in sync with reality at all times.
+When a task is fully done — all steps finished, files written, docs propagated — call `task COMPLETE` immediately. Do **not** wait for session close or explicit user instruction. COMPLETE is write-first: the task is removed from `tasks.json` and a line is appended to `tasks_completed.log` **before** any prompt appears. Never leave a finished task in `pending` or `in_progress` between work items — `tasks.json` must stay in sync with reality at all times.
+
+### Terminal Menu (post-close action picker)
+
+After the write, COMPLETE always issues a single `AskUserQuestion` terminal menu with up to 4 options: **Next: [unblocked dependent]** · **Next: [second slot]** · **Close session** · **Reopen [Title]**. The menu is a post-close action picker, not a gate to closure — the task is already committed closed when the menu appears. Picking **Next:** sets that task's `status` to `in_progress`. Picking **Close session** is the clean exit (no further writes). Picking **Reopen** is an explicit revert: it restores the task to `in_progress`, strips the completion log line, and decrements the counter. Single-focus invariant: the menu promotes at most one task.
 
 ### Patch Gate (if `requires_patch: true`)
 
-Tasks that modify scaffold templates downstream projects depend on must be flagged with `"requires_patch": true`. On COMPLETE, prompt: *"This task touched scaffold templates — did you update the patch catalog and rebundle?"* with options **"Yes, done"** / **"Not yet — reopen the task"**. If not yet, the task is restored to `in_progress`, the completion log line is removed, and the counter is decremented.
+Tasks that modify scaffold templates downstream projects depend on must be flagged with `"requires_patch": true`. When present, a blocking patch gate runs **before** the terminal menu: *"This task touched scaffold templates — did you update the patch catalog and rebundle?"* with options **"Yes, done"** / **"Not yet — reopen the task"**. If not yet, the task is restored to `in_progress`, the log line is removed, the counter is decremented, and the terminal menu is skipped.
 
 ### Reprioritization
 
@@ -388,7 +392,9 @@ Update `meta.last_updated` and `meta.last_updated_note`.
 
 ## COMPLETE
 
-Optimistic + batched. Happy-path worst case is **1 prompt** (the batched follow-up call). Best case is **0 prompts**. With `requires_patch`, add 1 blocking gate on top.
+Write-first, terminal-menu. Happy-path is **1 prompt** (the terminal menu) with `requires_patch: false`. With `requires_patch: true`, add 1 blocking patch gate on top (2 prompts total). The terminal menu always runs — clicking "Next:" is the clean close.
+
+**Ordering principle:** All writes happen in Steps 1–2 before any prompt. The terminal menu is a post-close action picker, not a gate to closure. Reopen is a post-close **revert** action, not a confirmation gate.
 
 ### Step 1 — Remove and log (MANDATORY)
 
@@ -406,45 +412,61 @@ Lazy-create the log file if missing — no header.
 
 ### Step 2 — Counter increment (MANDATORY)
 
-Increment `meta.completions_since_reprioritization` by 1. This is kept for HEALTH visibility only; COMPLETE does **not** auto-prompt to run REPRIORITIZE when it crosses the threshold. The user invokes REPRIORITIZE manually.
+Increment `meta.completions_since_reprioritization` by 1. Kept for HEALTH visibility only; COMPLETE does **not** auto-prompt to run REPRIORITIZE when it crosses the threshold. The user invokes REPRIORITIZE manually.
 
 ### Step 3 — Patch gate (blocking, only if `requires_patch: true`)
 
 If the completed task had `"requires_patch": true`, present `AskUserQuestion`:
 
 - **"Yes, done"** — proceed to Step 4.
-- **"Not yet — reopen the task"** — restore task to `in_progress` in `tasks.json`, remove the completion log line just appended, decrement `meta.completions_since_reprioritization` by 1, and stop.
+- **"Not yet — reopen the task"** — restore task to `in_progress` in `tasks.json`, remove the completion log line just appended, decrement `meta.completions_since_reprioritization` by 1, and stop. **Do not run Step 5.**
 
 Label: *"This task touched scaffold templates — did you update the patch catalog and rebundle?"*
 
 If `requires_patch` is absent or false, skip this step entirely.
 
-### Step 4 — Batched Impact scan (single `AskUserQuestion` call, only if dependents exist)
+### Step 4 — Silent scans
 
-Scan the remaining tasks in `tasks.json` for any that list the completed title in their `depends_on`. If one or more exist, present a single `AskUserQuestion` call with one question (`multiSelect: true`):
+Run these in memory — no prompts. Outputs feed the terminal menu in Step 5.
 
-- Header: `Unblocked`
-- Question: *"Completing this unblocks N tasks — which should move to in_progress?"*
-- Options: one per unblocked dependent. Label = single-digit index (`1`, `2`, `3`, …); description = full title. If there are 4 or more dependents, show the top 3 by `tasks.json` order plus **"None"**; the remaining dependents stay `pending` (user can move them manually later).
+- **Impact scan.** Scan `tasks.json` for tasks that list the completed title in their `depends_on`. Collect up to 2 unblocked dependent titles by file order (highest-priority first). These become the first "Next:" candidates in the menu.
+- **RECOMMEND fill.** Run RECOMMEND Steps 3–4 against the remaining `tasks.json`. Collect titles until the combined "Next:" slot count reaches 2 (deduped against the impact-scan results). If the file is empty of actionable T1/T2 tasks, the menu falls back to the empty-state collapse rules below.
+- **Doc-change heuristic.** Check if the completed title or its captured description matches words like `design`, `architecture`, `schema`, `spec`, `refactor`, `rewrite`, or mentions structural change. Remember this flag for the summary line.
 
-After the call: for each dependent the user selected, update its `status` to `in_progress` in `tasks.json`. If the user picked **"None"** or left all unselected, no status changes.
+### Step 5 — Terminal menu (MANDATORY, single `AskUserQuestion` call)
 
-If no dependents exist, skip Step 4 entirely (0 prompts).
+Before invoking the tool, print a one-line summary to chat:
 
-### Step 5 — Doc propagation reminder (inline text, no button)
+> Completed **[Title]**. Counter N/M.[ Unblocked: title1, title2.][ Design change — update Reference/ docs same-session.]
 
-If the completed task's title or description matches the heuristic (words like "design", "architecture", "schema", "spec", "refactor", "rewrite", or mentions structural change), print inline:
+Omit the Unblocked segment if no dependents. Omit the design-change segment if the heuristic did not fire.
 
-> *"Design change detected. Update any relevant `Reference/*.md` / `Documentation/md/*.md` files this session. If the project uses CPS, run `cps-refresh` before closing."*
+Then issue **one** `AskUserQuestion` tool call. Header: `Next action`. Build up to 4 options in this priority order (stop at 4):
 
-This is a reminder, not a blocker. No `AskUserQuestion`.
+1. **Next: [title]** — first unblocked dependent (if Step 4 found one). Description = full title + tier. Picking this sets that task's `status` to `in_progress` in `tasks.json`.
+2. **Next: [title]** — second slot: next unblocked dependent OR top RECOMMEND pick. Same rule on pick.
+3. **Close session** — no next task picked. No further writes. This is a clean close.
+4. **Reopen [Title]** — revert Phase 1: restore the just-completed task to `in_progress`, strip the completion log line, decrement `meta.completions_since_reprioritization` by 1, write back. No further action after revert.
+
+**Collapse rules when fewer than 2 Next candidates exist:**
+
+- One candidate: options = `Next: A`, `Close session`, `Reopen [Title]` (3 options).
+- Zero candidates (empty backlog): options = `Close session`, `Reopen [Title]` (2 options). After the user closes from an empty backlog, remind them to run EMPTY-STATE FLOW on next session start.
+
+**Single-focus invariant:** The menu picks at most ONE task to move to `in_progress`. Other unblocked dependents stay `pending` — the user can start them later by re-running RECOMMEND. Do not expand the menu into a multi-select; single-focus is what makes the next session clean.
+
+**Resolution:**
+
+- **Next: picked** → write `status: "in_progress"` on the selected task. Session boundary: the user's next move is expected to be either closing the session (to start fresh on the picked task) or continuing inline if they explicitly say so. Do not auto-start work on the picked task.
+- **Close session** → no writes. Stop.
+- **Reopen [Title]** → revert Phase 1 (restore task, strip log line, decrement counter). Stop. Do not re-surface the terminal menu.
 
 ### Removed from previous flow
 
-- ❌ **Reopen gate** — COMPLETE is now authoritative. The completion log captures history. Mistakes recovered via `task ADD`.
-- ❌ **Session boundary gate** — the user closes when they close.
+- ❌ **Reopen gate (pre-close)** — replaced by the post-close Reopen option in Step 5. The task is already committed closed before the menu appears; Reopen is an explicit revert, not a confirmation gate.
+- ❌ **Session boundary prompt** — folded into Step 5 "Close session" option.
 - ❌ **Reprioritize auto-suggest** — counter still increments for HEALTH, but no prompt. Invoke REPRIORITIZE manually.
-- ❌ **Sequential per-dependent impact prompts** — collapsed into one multi-select call.
+- ❌ **Multi-select unblocked promotion** — replaced by single-focus "Next:" pick in the terminal menu. RECOMMEND surfaces the rest next session.
 
 ---
 
