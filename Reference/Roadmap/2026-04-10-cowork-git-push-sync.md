@@ -1,9 +1,15 @@
 # Cowork → Git Push Sync (gitpush.bat)
 
 **Date:** 2026-04-10
-**Status:** Complete
+**Status:** Obsolete — superseded same day
 **Horizon:** Next
 **Source idea:** N/A (brainstorm 2026-04-10)
+
+> **Superseded 2026-04-10** by direct GitHub MCP connector access. Shane connected the
+> GitHub MCP server mid-day and Claude can now read/write/push directly against
+> `Huesdon/claude-project-system` via `mcp__github__get_file_contents`,
+> `create_or_update_file`, and `push_files`. `gitpush.bat` and `Runtime/gh_pull.py`
+> are retired — see CLAUDE.md rev 9 §0 House Rules for the new workflow.
 
 ## Goal
 One-command git push from Windows without any .git/ inside the Cowork folder.
