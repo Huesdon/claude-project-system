@@ -59,7 +59,7 @@ SHA-256 comparison on every `cps_ingest` call promotes any drifted `Runtime/*.py
 Relationship traversal across the index. Higher ceiling than flat search but requires a populated index to show value. Impact grows with project maturity.
 
 **15. `cps-init` Rev 3 — Runtime GitHub Fetch**
-Fetches `cps_scaffold.py` from `raw.githubusercontent.com/Huesdon/claude-project-system/main` at runtime. Scaffold edits go live to all downstream projects the moment they're pushed — no skill rebundle required.
+Fetches `cps_scaffold.py` from `raw.githubusercontent.com/Huesdon/cowork-project-system/main` at runtime. Scaffold edits go live to all downstream projects the moment they're pushed — no skill rebundle required.
 
 **16. GitHub MCP as Canonical CPS Dev I/O**
 All reads, writes, and pushes during CPS dev sessions go through `mcp__github__*` directly. No subprocess git, no `.bat` helpers, no manual push step. Mount-corruption risk eliminated.
