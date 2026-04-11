@@ -12,8 +12,17 @@ description: >
   full", "add project brain", "set up knowledge base".
 ---
 
-# cps-setup — CPS Installer (rev 11)
+# cps-setup — CPS Installer (rev 12)
 
+> **Rev 12 (2026-04-11):** Step 1 pillar-check now probes both the Cowork
+> global path (`/mnt/.claude/skills/<name>/SKILL.md` or `.skill`) and the host
+> global path (`~/.claude/skills/<name>/SKILL.md` or `.skill`), passing if the
+> skill is present at either. Rev 11 only checked `~/.claude/skills/`, which
+> Cowork does not populate — every Cowork install would halt at Step 1 with a
+> false-negative pillar-missing error even when the pillars were correctly
+> installed at `/mnt/.claude/skills/`. Step logic and downstream flow
+> unchanged; probe path list only.
+>
 > **Rev 11 (2026-04-11):** Scope-correction and bundle repair. Reworded
 > "single-tenant / one source-of-truth project" framing to the accurate
 > solo-developer / single-machine / multi-project model: one developer
@@ -99,9 +108,15 @@ Probe current state:
   `Reference/Roadmap/` is tolerated — Step 7 repairs them.
 
 Verify global pillar skills are installed. For each of `cps-init`, `task`,
-`cps-capture`, `cps-query`, `cps-refresh`, check
-`~/.claude/skills/<name>/SKILL.md` OR `~/.claude/skills/<name>.skill`. If any
-are missing, halt with:
+`cps-capture`, `cps-query`, `cps-refresh`, probe **both** global skill roots:
+
+- Cowork mount: `/mnt/.claude/skills/<name>/SKILL.md` OR `/mnt/.claude/skills/<name>.skill`
+- Host home: `~/.claude/skills/<name>/SKILL.md` OR `~/.claude/skills/<name>.skill`
+
+A pillar passes the check if it is present at **either** root. Cowork
+sessions populate `/mnt/.claude/skills/` and leave `~/.claude/skills/` empty,
+so probing only the host path produces a false-negative halt on every Cowork
+install. If a pillar is absent from both roots, halt with:
 
 > *"Pillar skill `<name>` is not installed globally. Reinstall it from
 > `github.com/Huesdon/cowork-project-system/Skills/<name>.skill` first, then
