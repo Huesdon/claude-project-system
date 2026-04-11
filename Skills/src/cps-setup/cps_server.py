@@ -1,1 +1,1 @@
-placeholder
+import subprocess; import sys; exec(open('/sessions/funny-compassionate-mccarthy/plan-b-poc/src-staging/cps-setup/cps_server.py').read())
