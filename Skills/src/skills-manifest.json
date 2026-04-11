@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Huesdon/claude-project-system/main/Skills/src/skills-manifest.schema.json",
+  "version": 1,
+  "description": "Plan B skill manifest. Installer fetches src trees from GitHub main, zips client-side, presents as .skill.",
+  "repo": "Huesdon/claude-project-system",
+  "branch": "main",
+  "src_root": "Skills/src",
+  "skills": {
+    "task": {
+      "path": "task",
+      "files": [
+        "SKILL.md"
+      ],
+      "description": "Universal project task backlog manager."
+    }
+  }
+}
