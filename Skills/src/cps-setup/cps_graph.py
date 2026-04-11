@@ -28,7 +28,7 @@ FILE_REF_PATTERN = re.compile(
     r'(?:^|\s|`)'
     r'((?:Reference|Documentation|Output|Documentation/md)/'
     r'[A-Za-z0-9_/.@-]+\.(?:md|json|yaml|html|py|js|skill))'
-    r'(?:\s|`|$|[),\]])',
+    r'(?:\s|`|$|[),\\]])',
     re.MULTILINE,
 )
 
