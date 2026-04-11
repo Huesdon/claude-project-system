@@ -11,5 +11,6 @@ Each patch is idempotent — detection re-checks live project state before apply
 | p004-capture-taxonomy | Add Reference/Claude/CPS_Capture_Taxonomy.md | p004-capture-taxonomy.md | Core + Full |
 | p005-task-module | Add Reference/Claude/CPS_Task_Module.md + tasks.json stub | p005-task-module.md | Core + Full |
 | p006-cps-core-block-rev3 | Inject §0 House Rules block into project CLAUDE.md | p006-cps-core-block-rev3.md | Core + Full |
+| p007-skills-version | Add `skills_version` key to `.cps/cps_config.json` for release-based skill tracking | p007-skills-version.md | Full only |
 
-<!-- CATALOG_END p006-cps-core-block-rev3 -->
+<!-- CATALOG_END p007-skills-version -->
