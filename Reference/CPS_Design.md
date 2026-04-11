@@ -1,6 +1,7 @@
 # CPS — Design
 
-> **Status:** rev 6 — 2026-04-10: §4.2 Directories and Files updated to include Ideas/, Roadmap/, Input/, Output/ (all scaffolded since Phase 8.7 / cps-patcher p001–p003).
+> **Status:** rev 7 — 2026-04-11: §1 Motivation reframed — CPS is the project management and task-flow system for developing solutions with Claude Cowork; runtime/semantic search kept as Full-profile retrieval layer, not the product identity.
+> **Rev 6 — 2026-04-10:** §4.2 Directories and Files updated to include Ideas/, Roadmap/, Input/, Output/ (all scaffolded since Phase 8.7 / cps-patcher p001–p003).
 > **Rev 5 — 2026-04-09:** cps-init redesign: profile arg + expanded CLAUDE.md pointer sections + CREATED/REPAIRED/SKIPPED outcome classification formally sanctioned; §4.1–§4.4 updated.
 > **Rev 4 — 2026-04-09:** cps-init now scaffolds `Documentation/` and `Documentation/md/` so the default cps-setup Step 10 source path is never empty on a fresh Full install; §4.2 and §4.5 updated together.
 > **Rev 3 — 2026-04-08:** t1-cps-design-update: drop any remaining lite/runtime-gating framing, make Core→Full graceful upgrade explicit, clarify prereqs check runs on every Full install, refresh task ID references in §7.
@@ -10,6 +11,8 @@
 ---
 
 ## 1. Motivation
+
+CPS is the project management and task-flow system for developing solutions with Claude Cowork. It turns a Cowork project into a place where work gets planned, executed, and learned from across sessions instead of restarting every conversation: tiered task backlog that surfaces the right work on session start, five-bucket knowledge capture that makes decisions and patterns stick, 200-line TOC rule that keeps documentation navigable, and session/delegation discipline that keeps token cost and routing predictable. Retrieval is the supporting layer, not the product — grep on small projects, a local semantic index on large ones.
 
 CPS serves two project sizes. Below ~100 files / ~10K markdown lines, semantic search is solving a problem grep already solves — but the three CPS pillars (task backlog, knowledge capture, TOC rule) still deliver value from day one. Above that threshold, the Python runtime and semantic search earn their keep.
 
