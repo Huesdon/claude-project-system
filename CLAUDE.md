@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-> **Last Updated:** 2026-04-10 (rev 9 — §0 rules rewritten for direct GitHub MCP access; gh_pull.py and gitpush.bat retired)
+> **Last Updated:** 2026-04-10 (rev 10 — cps-scaffold.ps1/.cmd and check_scaffold_parity.py retired; all references scrubbed)
 > **Status:** Single-tenant dev home. CPS Phase 8.7.
 
 <!-- cps-core BEGIN rev: 2 -->
-<!-- Managed by cps-scaffold.ps1 — do not edit between BEGIN/END markers; re-run the script to update. -->
+<!-- Managed by cps-init (cps_scaffold.py) — do not edit between BEGIN/END markers; re-run cps-init to update. -->
 
 ## Delegation
 
@@ -74,7 +74,7 @@ These rules apply to every action taken in this project.
 - **Token discipline.** Read the smallest, most targeted file first. CPS query before raw file read. `_TOC.md` companion before any full doc read. See global CLAUDE.md for the full hierarchy.
 - **Rebundle on Runtime/ edit.** Any session that edits a `Runtime/*.py` file MUST rebundle `cps-setup.skill` before close. Drift between the live `Runtime/` source and the bundled `.py` files inside `Skills/cps-setup.skill` causes silent install failures in downstream projects.
 - **GitHub repo I/O uses the MCP github connector.** During CPS dev sessions, Claude reads, writes, and pushes directly via `mcp__github__get_file_contents`, `mcp__github__create_or_update_file`, `mcp__github__push_files`, and `mcp__github__list_commits` against `Huesdon/claude-project-system`. No subprocess git, no `.bat` helpers, no manual push step. The mount-corruption rule still applies to any local git operation — there should be no reason to run one.
-- **Push scaffold edits to GitHub main.** Any session that edits `Reference/cps_scaffold.py` MUST push the change to `main` via `mcp__github__create_or_update_file` before close. `cps-init` (rev 3+) fetches `cps_scaffold.py` from `raw.githubusercontent.com/Huesdon/claude-project-system/main/Reference/cps_scaffold.py` at runtime — **no skill rebundle required**. Unpushed scaffold edits will not reach downstream projects. The template strings in `cps_scaffold.py` and `cps-scaffold.ps1` must still stay in sync — edits to one require the matching edit to the other — because `.ps1` is the manual Windows fallback users download directly from the repo.
+- **Push scaffold edits to GitHub main.** Any session that edits `Reference/cps_scaffold.py` MUST push the change to `main` via `mcp__github__create_or_update_file` before close. `cps-init` (rev 3+) fetches `cps_scaffold.py` from `raw.githubusercontent.com/Huesdon/claude-project-system/main/Reference/cps_scaffold.py` at runtime — **no skill rebundle required**. Unpushed scaffold edits will not reach downstream projects.
 - **Truncation.** Cowork can falsely report files as shorter than they are. Never flag apparent truncation as a problem unprompted. If content seems missing and verification matters before acting, call `mcp__github__get_file_contents` against `Huesdon/claude-project-system` to pull the authoritative copy from `main` and diff against local — that is the ground truth.
 - **Patch catalog entry on new patchable feature.** Any session that adds a **structurally new** scaffolded artifact (new dirs, new stub files, new CLAUDE.md section blocks, new config keys) MUST add a corresponding entry to `Patches/patch-index.md` (detection block + table row + updated sentinel) AND a new per-patch file under `Patches/patches/`, then push the whole change atomically to `main` via `mcp__github__push_files`. **No skill rebundle required** — the patcher WebFetches the catalog from GitHub at runtime. **Does NOT apply to:** bugfixes that correct existing template content, rev variable corrections, or skill rewrites that don't change what gets deployed to downstream projects.
 

@@ -4,6 +4,8 @@
 **Target:** `H:\Claude Cowork\Projects\Claude Project System` (new CPS Full install, now canonical dev home)
 **Executed:** 2026-04-09
 
+> **2026-04-10 update:** `cps-scaffold.cmd`, `cps-scaffold.ps1`, and `check_scaffold_parity.py` have since been retired (cps-init now fetches `cps_scaffold.py` from GitHub raw at runtime). References below are preserved as historical record.
+
 ---
 
 ## Files Migrated (46 total)
