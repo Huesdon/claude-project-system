@@ -18,8 +18,8 @@ import os
 TASK_MODULE_REV = 2
 TOC_RULE_REV = 1
 CAPTURE_REV = 2
-CORE_SECTION_REV = 3
-FULL_SECTION_REV = 1
+CORE_SECTION_REV = 4
+FULL_SECTION_REV = 2
 
 # --------------------------------------------------------------------------
 # Embedded templates (triple-quoted = verbatim, no interpolation)
@@ -176,27 +176,29 @@ When Claude flags a candidate, it pauses, states it in one line, and asks "worth
 **After capture:** If significant enough that future sessions must not miss it, suggest adding a pointer to this CLAUDE.md — but do not edit without explicit user approval.
 """
 
-CORE_SECTION_BLOCK = """<!-- cps-core BEGIN rev: 3 -->
-<!-- Managed by cps-scaffold.ps1 — do not edit between BEGIN/END markers; re-run the script to update. -->
+CORE_SECTION_BLOCK = """<!-- cps-core BEGIN rev: 4 -->
+<!-- Managed by cps-init (cps_scaffold.py) — re-run cps-init to update. -->
 
 ## Delegation
 
-Tier 1–4 mechanical tasks (file writes, mutations, formatting, transforms) delegate to Haiku. Sonnet handles architecture and decisions. See user preferences for the full routing heuristic.
+Route Tier 1–4 mechanical work (file writes, mutations, formatting, transforms) to Haiku. Reserve Sonnet for architecture and decisions. Full heuristic: user preferences.
 
 ---
 
 ## Session Startup
 
-On session open: surface top 1–3 active tasks (§9 RECOMMEND) before any other work. Load memory if available. Do not scope-clarify vague openers when a task backlog exists.
+Surface top 1–3 active tasks via §9 RECOMMEND. Load memory. Proceed to work.
 
 ---
 
-## Document Access Hierarchy
+## Document Access
 
-1. This CLAUDE.md (always loaded)
-2. `_TOC.md` companions (for any Reference/ or Documentation/md/ doc >200 lines)
-3. Targeted section reads with `offset`/`limit`
-4. Full doc reads — last resort only
+Read in order until answered:
+
+1. This CLAUDE.md
+2. `_TOC.md` companion (for any `Reference/` or `Documentation/md/` doc over 200 lines)
+3. Targeted `offset` / `limit` section read
+4. Full doc
 
 ---
 
@@ -209,46 +211,42 @@ On session open: surface top 1–3 active tasks (§9 RECOMMEND) before any other
 
 ## Input / Output Folders
 
-- `Input/` — drop source materials here for Claude to pick up and analyze. Markdown files in `Input/` are indexed by CPS (Full profile) via `Input/**/*.md` in `source_paths`.
-- `Output/` — **default drop zone for all Claude-generated deliverables** (reports, exports, presentations, one-off artifacts) that don't belong in `Documentation/` or `Reference/`. Claude writes deliverables here unless directed elsewhere.
+- `Input/` — Drop source materials here. CPS (Full profile) indexes `Input/**/*.md` via `source_paths`.
+- `Output/` — Default drop zone for Claude-generated deliverables (reports, exports, presentations, one-off artifacts) outside `Documentation/` and `Reference/`. Write deliverables here unless directed elsewhere.
 
 ---
 
-## 9. Task Module — Trigger Summary
+## 9. Task Module
 
-Session-start RECOMMEND, tier-based backlog, single source of truth in `Reference/Claude/tasks.json`.
-Full spec: `Reference/Claude/CPS_Task_Module.md`. Owned by the `task` skill.
-
----
-
-## 11. TOC Maintenance Rule
-
-Any `Reference/` or `Documentation/md/` file over 200 lines requires a companion `[SourceFilename]_TOC.md` in the same directory.
-Full spec: `Reference/Claude/CPS_TOC_Rule.md`.
+Invoke the `task` skill. Session-start RECOMMEND surfaces the tiered backlog from `Reference/Claude/tasks.json`. Spec: `Reference/Claude/CPS_Task_Module.md`.
 
 ---
 
-## 12. Knowledge Capture — Taxonomy
+## 11. TOC Rule
 
-Five buckets under `Reference/`: Patterns, Decisions, Lessons, Ideas (low-friction, promote when ready), Roadmap (committed intentions with Now/Next/Later horizon). Self-trigger gate requires all four capture criteria (Ideas have a lower bar). Promotion flow: Idea→Roadmap→Tasks.
-Full spec: `Reference/Claude/CPS_Capture_Taxonomy.md`.
-Trigger phrases: "add idea", "add to roadmap", "promote [title] to roadmap", "promote [title] to tasks".
+Generate a `_TOC.md` companion for every `Reference/` or `Documentation/md/` file over 200 lines. Spec: `Reference/Claude/CPS_TOC_Rule.md`.
+
+---
+
+## 12. Capture Taxonomy
+
+Route captures into five buckets under `Reference/`: Patterns, Decisions, Lessons, Ideas (low-friction — promote when ready), Roadmap (committed intentions, Now/Next/Later horizon). Promote: Idea → Roadmap → Tasks. Trigger phrases: "add idea", "add to roadmap", "promote [title] to roadmap", "promote [title] to tasks". Self-trigger gate: meet all four capture criteria (Ideas accept "what if" thoughts). Spec: `Reference/Claude/CPS_Capture_Taxonomy.md`.
 
 <!-- cps-core END -->
 """
 
-FULL_SECTION_BLOCK = """<!-- cps-full BEGIN rev: 1 -->
-<!-- Managed by cps-scaffold.ps1 — do not edit between BEGIN/END markers; re-run the script to update. -->
+FULL_SECTION_BLOCK = """<!-- cps-full BEGIN rev: 2 -->
+<!-- Managed by cps-init (cps_scaffold.py) — re-run cps-init to update. -->
 
 ## CPS Server Protocol
 
-Semantic search via `.cps/`. On demand — no session startup probe required.
+Run CPS semantic search on demand via `.cps/`.
 
-- **Query:** invoke `cps-query` skill (or `python .cps/cps_server.py search --query "..."`)
-- **Refresh:** invoke `cps-refresh` after doc/code changes
-- **Capture:** invoke `cps-capture` for knowledge entries
+- **Query** — Invoke `cps-query` (or `python .cps/cps_server.py search --query "..."`)
+- **Refresh** — Invoke `cps-refresh` after doc or code changes
+- **Capture** — Invoke `cps-capture` for knowledge entries
 
-Available whenever `.cps/cps_server.py` exists in the project root.
+Availability condition: `.cps/cps_server.py` exists in the project root.
 
 <!-- cps-full END -->
 """
