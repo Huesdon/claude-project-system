@@ -5,7 +5,7 @@
 
 ## Retired
 
-- **`cps-patcher`** — retired 2026-04-11. Duplicated `cps_scaffold.py` logic. Scaffold drift now handled by re-running `cps-init`. Rationale: `Reference/Decisions/2026-04-11-cps-upgrade-model-two-entry-points.md`. Installed `/mnt/.claude/skills/cps-patcher/` directory must be deleted by hand (read-only mount blocks MCP delete).
+- **`cps-patcher`** — retired 2026-04-11. Duplicated `cps_scaffold.py` logic. Scaffold drift now handled by re-running `cps-init`. Rationale: `Reference/Decisions/2026-04-11-cps-upgrade-model-two-entry-points.md`. **Cannot be uninstalled from inside a session.** `/mnt/.claude/skills/cps-patcher/` lives in the Claude VM image (read-only), not on Shane's machine — it persists until the platform refreshes `/mnt/.claude/skills/` out-of-band. Skill remains loadable via its trigger phrases, but is effectively dormant: `Patches/` is archived locally and scheduled for remote `git rm`, so any invocation will fetch an empty or missing catalog and halt at Step 2 sentinel validation.
 
 The `File` column points at a workspace `.skill` staging bundle when one exists.
 
