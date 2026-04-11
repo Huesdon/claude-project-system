@@ -51,12 +51,14 @@ _REQUIRED_DEPS = ["sqlite-vec", "huggingface-hub", "tokenizers", "onnxruntime", 
 def _bootstrap_deps() -> None:
     """Install required deps if any are missing. Logs to stderr only.
 
-    Three-phase: fast-path check → pip install → verified re-import.
-    Only prints 'bootstrap complete' after confirmed import success.
-    Fails loud (sys.exit(1)) if pip succeeds but imports still fail —
-    previously this was a silent false-success.
+    Flow: fast-path check → pip install → os.execv re-exec with a guard env var.
+    Re-exec is the only reliable way to pick up freshly-installed site-packages
+    in the current interpreter on Cowork sandbox — in-process importlib cache
+    invalidation leaves stale finder state and imports still fail. The
+    CPS_BOOTSTRAP_REEXEC env var blocks infinite re-exec loops if the install
+    genuinely didn't land.
     """
-    _IMPORT_NAMES = ["sqlite_vec", "huggingface_hub", "tokenizers", "onnxruntime", "numpy"]
+    _EXEC_GUARD = "CPS_BOOTSTRAP_REEXEC"
 
     def _try_imports() -> bool:
         try:
@@ -72,6 +74,17 @@ def _bootstrap_deps() -> None:
     if _try_imports():
         return  # fast path — all present
 
+    # If we already re-execed once and imports STILL fail, pip install landed
+    # packages that can't be loaded (arch mismatch, broken wheel, path shadow).
+    # Fail loud rather than re-exec forever.
+    if os.environ.get(_EXEC_GUARD) == "1":
+        print(
+            "[CPS] FATAL: dependencies still missing after pip install + re-exec. "
+            "Check sandbox site-packages, arch compatibility, or path shadowing.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     print("[CPS] bootstrapping missing dependencies...", file=sys.stderr)
     result = subprocess.run(
         [sys.executable, "-m", "pip", "install", *_REQUIRED_DEPS,
@@ -83,27 +96,13 @@ def _bootstrap_deps() -> None:
         print(result.stderr, file=sys.stderr)
         sys.exit(1)
 
-    # Pip exited 0, but newly installed packages may not be visible yet.
-    # Clear cached import failures and refresh the module finder before retrying.
-    import importlib
-    import site
-    for mod_name in _IMPORT_NAMES:
-        sys.modules.pop(mod_name, None)
-    importlib.invalidate_caches()
-    for sp in site.getsitepackages():
-        if sp not in sys.path:
-            sys.path.insert(0, sp)
-
-    # Verified re-import — fail loud if still broken.
-    if not _try_imports():
-        print(
-            "[CPS] FATAL: pip install succeeded but imports still fail. "
-            "Check sandbox site-packages or dependency conflicts.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    print("[CPS] dependency bootstrap complete.", file=sys.stderr)
+    # Pip succeeded. Re-exec the interpreter so the new process starts with a
+    # clean import state that sees the freshly-installed site-packages. The
+    # guard env var ensures this path runs at most once per invocation.
+    print("[CPS] dependency bootstrap complete — re-executing.", file=sys.stderr)
+    new_env = os.environ.copy()
+    new_env[_EXEC_GUARD] = "1"
+    os.execvpe(sys.executable, [sys.executable, *sys.argv], new_env)
 
 
 _bootstrap_deps()
