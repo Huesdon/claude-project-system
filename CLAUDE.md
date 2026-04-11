@@ -1,8 +1,7 @@
 # CLAUDE.md
 
-> **Last Updated:** 2026-04-11 (rev 19 — §1/§2 reframed: CPS positioned as Claude Cowork project management and task-flow system for developing solutions with Cowork; retrieval layer kept subordinate to the four-module core loop)
-> **Rev 18 — 2026-04-11:** §7 doc table: drop stale CPS_Integration_Spec row, add CPS_Design TOC ✅; §1.1 link single-tenant decision record
-> **Status:** Single-tenant dev home. CPS Phase 8.7.
+> **Last Updated:** 2026-04-11 (rev 22 — patcher retirement: §0b routing table collapsed to cps-init upgrade path, §1.1 rewritten to solo-developer/multi-project)
+> **Status:** Solo-developer dev home. CPS Phase 8.8. Rev history: `Reference/CPS_Phase_History.md`.
 
 <!-- cps-core BEGIN rev: 4 -->
 <!-- Managed by cps-init (cps_scaffold.py) — re-run cps-init to update. -->
@@ -79,6 +78,25 @@ Route captures into five buckets under `Reference/`: Patterns, Decisions, Lesson
 
 ---
 
+## 13. Response Mode
+
+Default chat response: **caveman full**. Scope: response tokens only — files written to `Reference/`, `Documentation/`, `Runtime/`, `Output/`, code blocks, commits, PR bodies, and `SKILL.md` stay prose.
+
+Carveouts to **caveman lite** (preserve nuance):
+
+- Plan mode drafts and `ExitPlanMode` summaries
+- Architecture trade-offs and ADR discussions
+- Multi-step sequences where fragment order risks misread
+
+Hard prose (no caveman):
+
+- Security warnings and destructive-op gates
+- `AskUserQuestion` content (already terse by design)
+
+Escape triggers: `normal mode` reverts to prose; `/caveman lite|full|ultra` adjusts intensity. Level persists to session end.
+
+---
+
 ## 0. House Rules
 
 Inherited from global CLAUDE.md — apply to every action in this project.
@@ -93,11 +111,10 @@ Inherited from global CLAUDE.md — apply to every action in this project.
 | Trigger | Action |
 |---|---|
 | Any file read | Read smallest targeted file first → CPS query → `_TOC.md` companion → full doc |
-| Any GitHub repo I/O | Use `mcp__github__*` connector against `Huesdon/cowork-project-system` (no subprocess git, no `.bat`) |
+| Any GitHub repo I/O | Use `mcp__github__*` connector against `Huesdon/cowork-project-system` (no subprocess git, no `.bat`). Server registered in project-local `.mcp.json` per `Reference/Decisions/2026-04-11-plugin-decoupling.md`. |
 | Edited `Runtime/*.py` | Rebundle `cps-setup.skill` before session close |
 | Edited `Reference/cps_scaffold.py` | Push to `main` via `mcp__github__create_or_update_file` before close (fetched at runtime by `cps-init` rev 3+) |
-| Added structurally new scaffold artifact (dir, stub, CLAUDE.md section block, Full-profile config key) | Add entry to `Patches/patch-index.md` (detection block + table row + sentinel) + per-patch file under `Patches/patches/`, push atomically via `mcp__github__push_files` |
-| Patch scope | Project-scoped scaffold artifacts only: new dirs, stubs, CLAUDE.md section blocks, Full-profile config keys. |
+| Added structurally new scaffold artifact (dir, stub, CLAUDE.md section block, Full-profile config key) | Edit `cps_scaffold.py`, bump the relevant `<!-- rev: N -->` marker (canonical doc) or `<!-- cps-core BEGIN rev: N -->` marker (CLAUDE.md block), push to `main`. Re-run `cps-init` against downstream projects to propagate. No patch catalog. |
 
 ---
 
@@ -109,15 +126,15 @@ Inherited from global CLAUDE.md — apply to every action in this project.
 - **Runtime source of truth:** `Runtime/` — canonical Python files
 - **Skills install path:** `/mnt/.claude/skills/` (global; every CPS skill runs from here). Stage `.skill` bundles in workspace `Skills/` before hand-install.
 
-### 1.1 Single-Tenant Principle
+### 1.1 Solo-Developer Principle
 
-CPS is permanently single-tenant: one developer, one machine, one forever-home project. Decision record: `Reference/Decisions/2026-04-11-cps-permanently-single-tenant.md`.
+CPS is a solo-developer, one-machine, multi-project system. One developer (Shane), one machine, one global skill install at `/mnt/.claude/skills/`, any number of Cowork project folders scaffolded via `cps-init` / `cps-setup`. Reject any premise that assumes multi-user sharing, fleet distribution, or cross-machine sync. Decision record: `Reference/Decisions/2026-04-11-cps-permanently-single-tenant.md` (scope-corrected). Upgrade model: `Reference/Decisions/2026-04-11-cps-upgrade-model-two-entry-points.md`.
 
 ---
 
 ## 2. What CPS Is
 
-A project management and task-flow system for Claude Cowork — plans the work, tracks it across sessions, captures what Cowork learns while doing it, and keeps the whole loop coherent for the next session. Four modules deliver it: **Tasks** (§9 — tiered backlog in `tasks.json`, the daily flow), **Knowledge** (§12 — Patterns/Decisions/Lessons/Ideas/Roadmap capture so decisions stop getting relitigated and ideas become shipped work), **Docs** (§11 — markdown-first single source of truth with the 200-line TOC rule), and **Sessions** (§0/Delegation — the routing and discipline that makes every Cowork session pick up where the last one left off). Retrieval runs locally via SQLite + sqlite-vec + ONNX `all-MiniLM-L6-v2` so cited answers cost ~1K tokens instead of 3K–12K. Ships in two profiles — **Core** (scaffold + three pillars, grep retrieval) and **Full** (Core + Python runtime + semantic search + knowledge graph). Installer: `cps-setup`. MCP tools: `cps_search`, `cps_retrieve`, `cps_status`, `cps_ingest`, `cps_prime`, `cps_purge`, `cps_graph_build`, `cps_graph_query`. Full spec: `Reference/CPS_Design.md`.
+Project management and task-flow system for Claude Cowork. Four modules: Tasks (§9), Knowledge (§12), Docs (§11), Sessions (§0/Delegation). Ships as Core (three pillars + grep) or Full (Core + Python runtime + semantic search + knowledge graph). Installer: `cps-setup`. Full spec + module detail + MCP tool list: `Reference/CPS_Design.md`.
 
 ---
 
@@ -135,28 +152,13 @@ CPS skill inventory (triggers, bundle paths, status) lives in `Reference/Skill_I
 
 ## 6. Phase History
 
-**Current:** Phase 8.7 complete. Full changelog: `Reference/CPS_Phase_History.md`. Consult only when historical context is needed; day-to-day work does not require reading it.
-
-**Tested numbers (D3 project):** 132 files, 1097 chunks, 220K tokens indexed. Typical 5-result query: ~1K tokens vs 3K–12K for raw file reads.
+Phase 8.8 complete (patcher retirement). Changelog + tested numbers: `Reference/CPS_Phase_History.md`.
 
 ---
 
 ## 7. Documentation
 
-| File | Location | Lines | TOC | Purpose |
-|------|----------|-------|-----|---------|
-| CPS_Features_Overview.md | `Documentation/md/` | ~60 | — | All 13 CPS features ranked by impact, with tier groupings and pending items |
-| CPS_Setup_Guide.md | `Documentation/md/` | 55 | — | Install flow, profile choice (Core vs Full), configuration walkthrough |
-| CPS_Troubleshooting_Guide.md | `Documentation/md/` | 63 | — | Error diagnosis and recovery steps |
-| CPS_Design.md | `Reference/` | 213 | ✅ | Canonical design spec — profiles, installer flow, Core/Full delineation |
-| CPS_Phase_History.md | `Reference/` | — | — | Full changelog from Phase 1 through current |
-| CPS_Deployment_Checklist.md | `Reference/` | 17 | — | New-project deployment checklist |
-| CPS_Validation_Report.md | `Reference/` | 60 | — | Phase validation results and test outcomes |
-| Runtime/README.md | `Runtime/` | 45 | — | File manifest, dependencies, quick install |
-
-**TOC count: 1 doc.** Any doc above 200 lines gets a companion `_TOC.md` per §11. The TOC column is the authoritative registry — add a TOC on the next edit pass for any doc over threshold with an empty column.
-
-**Canonical source:** Read and index `.md` only. Markdown is the single source of truth (40–60% token savings vs `.html`).
+Doc registry (file, location, lines, TOC, purpose) lives in `Documentation/md/_doc_registry.md`. Read and index `.md` only — markdown is the single source of truth (40–60% token savings vs `.html`). Any doc over 200 lines gets a `_TOC.md` companion per §11.
 
 ---
 
