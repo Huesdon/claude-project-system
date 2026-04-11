@@ -93,7 +93,7 @@ Inherited from global CLAUDE.md — apply to every action in this project.
 | Trigger | Action |
 |---|---|
 | Any file read | Read smallest targeted file first → CPS query → `_TOC.md` companion → full doc |
-| Any GitHub repo I/O | Use `mcp__github__*` connector against `Huesdon/claude-project-system` (no subprocess git, no `.bat`) |
+| Any GitHub repo I/O | Use `mcp__github__*` connector against `Huesdon/cowork-project-system` (no subprocess git, no `.bat`) |
 | Edited `Runtime/*.py` | Rebundle `cps-setup.skill` before session close |
 | Edited `Reference/cps_scaffold.py` | Push to `main` via `mcp__github__create_or_update_file` before close (fetched at runtime by `cps-init` rev 3+) |
 | Added structurally new scaffold artifact (dir, stub, CLAUDE.md section block, Full-profile config key) | Add entry to `Patches/patch-index.md` (detection block + table row + sentinel) + per-patch file under `Patches/patches/`, push atomically via `mcp__github__push_files` |
