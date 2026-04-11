@@ -8,3 +8,4 @@ Use `cps-capture` with trigger "add to roadmap". Promote to tasks with "promote 
 | Title | Horizon | Status | File |
 |-------|---------|--------|------|
 | Put all CPS-enabled projects under git | Next | Open | put-all-cps-projects-under-git.md |
+| Cowork → Git Push Sync | Next | Active | 2026-04-10-cowork-git-push-sync.md |

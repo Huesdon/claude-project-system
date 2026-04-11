@@ -1,11 +1,30 @@
 {
   "meta": {
     "last_updated": "2026-04-10",
-    "last_updated_note": "completed t3-scaffold-bundle-assertion",
-    "completions_since_reprioritization": 6,
+    "last_updated_note": "completed t1-github-recovery-helper (Runtime/gh_pull.py); 2 follow-ups remain",
+    "completions_since_reprioritization": 7,
     "reprioritize_threshold": 10,
     "last_reprioritized": "2026-04-10",
     "reprioritization_strategy": "dependency-first"
   },
-  "tasks": []
+  "tasks": [
+    {
+      "id": "t2-cps-init-webfetch-scaffold",
+      "title": "Refactor cps-init to WebFetch cps_scaffold.py from GitHub main at runtime",
+      "tier": "T2",
+      "status": "pending",
+      "description": "Eliminate the 'rebundle cps-init.skill on scaffold edit' house rule by having cps-init pull cps_scaffold.py (and the .ps1/.cmd wrappers) from raw.githubusercontent.com at install time, same pattern as cps-patcher's catalog fetch. Removes one of two remaining rebundle disciplines. Requires the recovery helper pattern to be proven first so we share the fetch+verify code path.",
+      "depends_on": [],
+      "unblocks": []
+    },
+    {
+      "id": "t2-cps-releases-skill-distribution",
+      "title": "Distribute .skill bundles via GitHub Releases instead of hand-delivery",
+      "tier": "T2",
+      "status": "pending",
+      "description": "Tag CPS versions (v8.7, v8.8...) and attach .skill files as release assets. cps-patcher / cps-setup can then fetch the latest skill bundles directly from the release, decoupling skill updates from the manual rebundle+present_files cycle. Downstream projects get current skills without Shane hand-delivering each one. Larger scope — design the release cadence and which skills ship where.",
+      "depends_on": [],
+      "unblocks": []
+    }
+  ]
 }

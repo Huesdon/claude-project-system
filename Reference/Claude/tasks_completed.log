@@ -59,3 +59,4 @@
 2026-04-10 | t3-deployment-checklist-stale | Update CPS_Deployment_Checklist.md to remove stale references
 2026-04-10 | t3-design-doc-directory-list | Update CPS_Design.md §4.2 directory list to include all scaffold dirs
 2026-04-10 | t3-scaffold-bundle-assertion | Add bundle-time assertion: cps_scaffold.py and cps-scaffold.ps1 template strings match
+2026-04-10 | t1-github-recovery-helper | Built Runtime/gh_pull.py — GitHub-first recovery helper (urllib fetch from raw.githubusercontent.com/Huesdon/claude-project-system, SHA-256 diff, dry-run default, --apply with auto-backup). Validated: syntax, match, diff detection (15B delta), missing_remote 404, --apply roundtrip. No cps-setup rebundle required (gh_pull.py not in the bundled 5-file list). No patch catalog entry required (home-project helper, not scaffolded downstream).
