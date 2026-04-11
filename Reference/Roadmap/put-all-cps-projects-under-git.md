@@ -9,7 +9,7 @@ captured: 2026-04-10
 
 ## Goal
 
-Every Cowork project that has CPS installed should have its own git repo on GitHub (or another host), following the same pattern established for `claude-project-system` itself.
+Every Cowork project that has CPS installed should have its own git repo on GitHub (or another host), following the same pattern established for `cowork-project-system` itself.
 
 ## Rationale
 
