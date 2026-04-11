@@ -5,21 +5,30 @@ description: >
   Core (scaffold + three pillars, grep retrieval) or CPS Full (Core + Python
   runtime + semantic search + knowledge graph) into a target Cowork project
   folder. Handles fresh installs, Core→Full upgrades, runtime redeploys, and
-  full reinstalls. Single-tenant by design — assumes shared CPS skills are
-  already installed globally at `/mnt/.claude/skills/`. Triggers on: "cps-setup",
-  "install cps", "set up cps", "deploy cps", "bootstrap cps", "install cps core",
-  "install cps full", "upgrade cps to full", "add project brain", "set up
-  knowledge base".
+  full reinstalls. Solo-developer, single-machine by design — assumes shared
+  CPS skills are already installed globally at `/mnt/.claude/skills/`.
+  Triggers on: "cps-setup", "install cps", "set up cps", "deploy cps",
+  "bootstrap cps", "install cps core", "install cps full", "upgrade cps to
+  full", "add project brain", "set up knowledge base".
 ---
 
-# cps-setup — CPS Installer (rev 10)
+# cps-setup — CPS Installer (rev 11)
 
-> **Rev 10 (2026-04-11):** Full rewrite from first principles. CPS is
-> permanently single-tenant (one developer, one machine, one source-of-truth
-> project) — all "bundle distribution" language removed. Pillar skills
-> (`cps-init`, `task`, `cps-capture`, `cps-query`, `cps-refresh`) are assumed
-> already installed globally under `/mnt/.claude/skills/`; missing pillars
-> halt with an instruction to reinstall from the CPS source tree, not a bundle
+> **Rev 11 (2026-04-11):** Scope-correction and bundle repair. Reworded
+> "single-tenant / one source-of-truth project" framing to the accurate
+> solo-developer / single-machine / multi-project model: one developer
+> (Shane), one machine, one global skill install at `/mnt/.claude/skills/`,
+> **any number** of downstream Cowork project folders scaffolded from it.
+> Repo canonicalized to `github.com/Huesdon/cowork-project-system` (old
+> `claude-project-system` name retired). Rebundled from the GitHub source to
+> restore Steps 11c and 12 that the previously installed bundle truncated
+> mid–Step 11b. No step logic changed; wording and bundle integrity only.
+>
+> **Rev 10 (2026-04-11):** Full rewrite from first principles. All "bundle
+> distribution" language removed. Pillar skills (`cps-init`, `task`,
+> `cps-capture`, `cps-query`, `cps-refresh`) are assumed already installed
+> globally under `/mnt/.claude/skills/`; missing pillars halt with an
+> instruction to reinstall from the CPS source tree, not a bundle
 > presentation. Steps renumbered and collapsed: 12 steps total, single linear
 > flow with gates. Reconstructed Steps 11–12 that rev 6 truncated mid-heading.
 >
@@ -43,14 +52,16 @@ Full is a strict superset of Core. Upgrading Core → Full is additive — no
 migration, no schema change, no rewrites. Design rationale and profile details:
 `Reference/CPS_Design.md` in the CPS source-of-truth project.
 
-## Single-tenant assumption
+## Solo-developer assumption
 
-CPS is permanently single-tenant: one developer, one machine, one forever-home
-project at `github.com/Huesdon/claude-project-system`. The five CPS pillar
-skills (`cps-init`, `task`, `cps-capture`, `cps-query`, `cps-refresh`) are
-installed once, globally, at `/mnt/.claude/skills/`. This installer does not
-bundle, present, or install pillar skills — it assumes they are already there.
-Step 1 verifies the assumption and halts if it fails.
+CPS is a solo-developer, single-machine system. One developer (Shane), one
+machine, one global skill install at `/mnt/.claude/skills/`, and any number
+of Cowork project folders scaffolded from that single install. The CPS
+source-of-truth repo lives at `github.com/Huesdon/cowork-project-system`.
+The five CPS pillar skills (`cps-init`, `task`, `cps-capture`, `cps-query`,
+`cps-refresh`) are installed once, globally, at `/mnt/.claude/skills/`. This
+installer does not bundle, present, or install pillar skills — it assumes
+they are already there. Step 1 verifies the assumption and halts if it fails.
 
 ## Bundled with this skill
 
@@ -93,12 +104,12 @@ Verify global pillar skills are installed. For each of `cps-init`, `task`,
 are missing, halt with:
 
 > *"Pillar skill `<name>` is not installed globally. Reinstall it from
-> `github.com/Huesdon/claude-project-system/Skills/<name>.skill` first, then
+> `github.com/Huesdon/cowork-project-system/Skills/<name>.skill` first, then
 > re-run cps-setup."*
 
-Do not attempt to present or bundle a missing pillar. This is a single-tenant
-system; the pillars are installed once and managed directly in
-`/mnt/.claude/skills/`.
+Do not attempt to present or bundle a missing pillar. This is a
+solo-developer system; the pillars are installed once and managed directly
+in `/mnt/.claude/skills/`.
 
 ## Step 2 — Profile menu
 
