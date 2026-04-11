@@ -7,7 +7,7 @@
 
 > **Superseded 2026-04-10** by direct GitHub MCP connector access. Shane connected the
 > GitHub MCP server mid-day and Claude can now read/write/push directly against
-> `Huesdon/claude-project-system` via `mcp__github__get_file_contents`,
+> `Huesdon/cowork-project-system` via `mcp__github__get_file_contents`,
 > `create_or_update_file`, and `push_files`. `gitpush.bat` and `Runtime/gh_pull.py`
 > are retired — see CLAUDE.md rev 9 §0 House Rules for the new workflow.
 
@@ -20,13 +20,13 @@ StreamDeck button mapped to `Runtime/gitpush.bat` — one press, done.
 **Trigger:** Shane says "gitpush" → Claude generates commit message and overwrites `Runtime/gitpush.bat`.
 
 **Bat behavior (each run):**
-- `robocopy` INCLUDE list from Cowork project → `H:\Github\claude-project-system`
+- `robocopy` INCLUDE list from Cowork project → `H:\Github\cowork-project-system`
 - INCLUDE: Runtime/, Reference/, Documentation/, Skills/, Patches/, CLAUDE.md
 - EXCLUDE: .cps/, .claude/, Output/, Input/
 - `git add -A` → `git commit -m "<Claude-generated message>"` → `git push origin main`
 
 **Bat location:** `H:\Claude Cowork\Projects\Claude Project System\Runtime\gitpush.bat` (fixed path — StreamDeck target)
-**Git clone:** `H:\Github\claude-project-system`
+**Git clone:** `H:\Github\cowork-project-system`
 
 ## Rationale
 Cowork's mount layer corrupts git internals if .git/ lives inside the project folder.
@@ -35,7 +35,7 @@ result with zero git ceremony inside Cowork. Claude generates the commit message
 so Shane never has to type one.
 
 ## Dependencies
-- Git clone at `H:\Github\claude-project-system` (one-time setup, must exist)
+- Git clone at `H:\Github\cowork-project-system` (one-time setup, must exist)
 - Git credentials configured on Windows
 
 ## Success criteria
