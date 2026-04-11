@@ -3,8 +3,10 @@ name: cps-patcher
 description: Apply incremental CPS updates to an existing CPS-enabled project without a full reinstall. Use when CPS has released new features (new knowledge buckets, schema changes, scaffold updates, config changes) and you want to bring this project up to date. ALWAYS use this skill when the user says "patch cps", "update cps", "apply cps patch", "cps-patcher", "cps out of date", "bring cps up to date", "apply cps updates", or asks why their CPS project is missing features that a newer CPS version has.
 ---
 
-# CPS Patcher (rev 3)
+# CPS Patcher (rev 4)
 
+> **Rev 4 (2026-04-11):** Added explicit **Scope** subsection stating that CPS is permanently single-tenant and skills are globally installed on the dev machine — skills are never a patcher payload. The patcher only touches project-scoped scaffold artifacts. Also completed the Step 5 Haiku delegation note, which was truncated mid-sentence in rev 3.
+>
 > **Rev 3 (2026-04-10):** Replaced the hardcoded `CATALOG_END p006-cps-core-block-rev3` sentinel with a dynamic sentinel check that parses the last table row from the catalog at runtime. Adding a new patch to `patch-index.md` no longer requires a skill rev bump — the sentinel just has to match the last row. Also unified on `mcp__github__get_file_contents` for all fetches (was split between WebFetch in the bundled rev 1 and GitHub MCP in the installed rev 2).
 
 Apply incremental CPS updates to this project without a full reinstall.
@@ -12,6 +14,19 @@ Apply incremental CPS updates to this project without a full reinstall.
 ## What it does
 
 The patcher inspects the current project's CPS state, compares it against the known patch catalog, and applies any missing patches — creating directories, writing stub files, updating CLAUDE.md sections, patching canonical docs, and updating Full-profile config files. Each patch is idempotent: it re-checks live project state before applying and skips anything already present.
+
+## Scope — skills are out of scope
+
+CPS is permanently single-tenant: one developer, one machine, no skill distribution. The skills that implement CPS (`cps-init`, `cps-setup`, `cps-capture`, `cps-query`, `cps-refresh`, `task`, `cps-patcher` itself) live globally under `/mnt/.claude/skills/` and are managed by hand — they are never patcher payload and are never fetched, bundled, or rewritten by a patch.
+
+A valid patch modifies **only project-scoped scaffold artifacts**:
+
+- New or modified directories under the project root (e.g. `Reference/Ideas/`, `Documentation/md/`)
+- New or modified stub files and canonical docs (e.g. `Reference/Claude/CPS_Capture_Taxonomy.md`, `_INDEX.md` stubs)
+- New or modified section blocks inside the project `CLAUDE.md` (e.g. §0 House Rules, §9 Task Module pointer)
+- New or modified keys inside Full-profile config files (`.cps/cps_config.json`, `Reference/Claude/cps_patch_manifest.json`)
+
+If a proposed update would require touching a `.skill` bundle, a file under `/mnt/.claude/skills/`, or any cross-machine distribution mechanism, it is **not** a patch — edit the skill source on `main` directly and reinstall locally. Do not add such entries to `patch-index.md`.
 
 ---
 
@@ -80,4 +95,4 @@ For each pending patch, in index order:
 3. Execute each action defined in the patch file
 4. Report per-action outcome: **CREATED** / **UPDATED** / **SKIPPED**
 
-Delegate file-write actions (creating dirs, writing stubs, editing files) to Haiku — pass the exact content from the patch file. Don't paraphrase or regenerate content; use what the patch file
+Delegate file-write actions (creating dirs, writing stubs, editing files) to Haiku — pass the exact content from the patch file. Don't paraphrase or regenerate content; use what the patch file specifies verbatim. After all patches in the plan have been applied, append an entry to `Reference/Claude/cps_patch_manifest.json` recording each patch ID, the apply timestamp, and the per-action outcomes, then report a one-line summary to the user.
