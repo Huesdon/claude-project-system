@@ -1,6 +1,8 @@
 # CPS Features — Ranked by Impact
 
-> As of Phase 8.7 · 2026-04-10
+> As of Phase 8.7 · 2026-04-11
+
+**CPS is a Claude Cowork project management and task-flow system for developing solutions with Cowork.** Four modules — Tasks, Knowledge, Docs, Sessions — keep planning, execution, and institutional memory coherent across every Cowork session. The features below are ranked by how much lift each one provides on top of that core loop.
 
 ---
 
@@ -34,25 +36,33 @@ Hash-based change detection — only re-chunks and re-embeds what changed. Makes
 **8. TOC Maintenance Rule**
 Companion `_TOC.md` for any doc over 200 lines. Keeps large docs navigable without full reads. Low-glamour but essential at scale.
 
+**9. Plugin Discovery as Solution Step**
+Before concluding a capability doesn't exist, search the MCP registry and suggest connectors. Plugins are a first-class option in any workflow touching external tools, data sources, or services. Enforced in global CLAUDE.md.
+
+**10. Input/Output Folder Conventions**
+`Input/` for source materials Claude picks up and analyzes; `Output/` as the default drop zone for deliverables. Removes ambiguity about where things land and keeps the workspace predictable.
+
+**11. Ideas→Roadmap→Tasks Promotion Loop**
+When the task backlog empties, surface roadmap items; when roadmap is empty, surface ideas. Closes the loop between long-horizon thinking and active work. Managed by the `task` skill.
+
 ---
 
 ## Tier 3 — Integrity & Lifecycle
 
-**9. `cps-patcher` Skill**
+**12. `cps-patcher` Skill**
 Incremental upgrades to existing CPS projects without reinstall. Idempotent, catalog-ordered, manifest-tracked. Keeps downstream projects current without regression risk.
 
-**10. Self-Hosting Sync** *(Runtime/ → .cps/ on ingest)*
+**13. Self-Hosting Sync** *(Runtime/ → .cps/ on ingest)*
 SHA-256 comparison on every `cps_ingest` call promotes any drifted `Runtime/*.py` into `.cps/`. Prevents the CPS dev project from running stale code against itself.
 
-**11. Knowledge Graph** *(`cps_graph_build` / `cps_graph_query`)*
+**14. Knowledge Graph** *(`cps_graph_build` / `cps_graph_query`)*
 Relationship traversal across the index. Higher ceiling than flat search but requires a populated index to show value. Impact grows with project maturity.
 
----
+**15. `cps-init` Rev 3 — Runtime GitHub Fetch**
+Fetches `cps_scaffold.py` from `raw.githubusercontent.com/Huesdon/claude-project-system/main` at runtime. Scaffold edits go live to all downstream projects the moment they're pushed — no skill rebundle required.
 
-## Pending — Not Yet Shipped
+**16. GitHub MCP as Canonical CPS Dev I/O**
+All reads, writes, and pushes during CPS dev sessions go through `mcp__github__*` directly. No subprocess git, no `.bat` helpers, no manual push step. Mount-corruption risk eliminated.
 
-**12. Ideas→Roadmap→Tasks Promotion Loop**
-When task backlog empties, surface roadmap; if roadmap empty, surface ideas. Closes the loop between long-horizon thinking and active work. Currently a manual step.
-
-**13. Patch Catalog Discipline** *(house rule, no tooling yet)*
-Enforcing that new patchable features get catalog entries same-session. The gap between "we shipped it" and "downstream projects can get it" shrinks to zero when this is automatic.
+**17. Patch Catalog Discipline**
+Any structurally new scaffolded artifact requires a same-session `patch-index.md` entry + per-patch file, pushed atomically to `main`. Shrinks the gap between "shipped" and "downstream can get it" to zero.
