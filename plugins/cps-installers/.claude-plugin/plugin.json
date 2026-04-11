@@ -1,0 +1,21 @@
+{
+  "name": "cps-installers",
+  "version": "1.0.0",
+  "description": "On-demand install-time skills for the Claude Project System (CPS). Ships cps-init (scaffold) and cps-setup (runtime deploy + Full install). Install per-project when bootstrapping; uninstall or scope to the one project that needs them to keep them out of global token load.",
+  "author": {
+    "name": "Shane Huesdon",
+    "url": "https://github.com/Huesdon"
+  },
+  "homepage": "https://github.com/Huesdon/cowork-project-system",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Huesdon/cowork-project-system"
+  },
+  "keywords": [
+    "cps",
+    "installer",
+    "scaffold",
+    "claude-project-system",
+    "cowork"
+  ]
+}
