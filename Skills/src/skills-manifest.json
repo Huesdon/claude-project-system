@@ -12,6 +12,53 @@
         "SKILL.md"
       ],
       "description": "Universal project task backlog manager."
+    },
+    "cps-capture": {
+      "path": "cps-capture",
+      "files": [
+        "SKILL.md"
+      ],
+      "description": "Capture knowledge into CPS Reference buckets."
+    },
+    "cps-query": {
+      "path": "cps-query",
+      "files": [
+        "SKILL.md"
+      ],
+      "description": "Query the CPS knowledge base via CLI."
+    },
+    "cps-refresh": {
+      "path": "cps-refresh",
+      "files": [
+        "SKILL.md"
+      ],
+      "description": "Incrementally re-index the CPS knowledge base."
+    },
+    "cps-init": {
+      "path": "cps-init",
+      "files": [
+        "SKILL.md"
+      ],
+      "description": "Canonical CPS scaffolder (fetches cps_scaffold.py from main at runtime)."
+    },
+    "cps-patcher": {
+      "path": "cps-patcher",
+      "files": [
+        "SKILL.md"
+      ],
+      "description": "Apply incremental CPS updates to existing projects."
+    },
+    "cps-setup": {
+      "path": "cps-setup",
+      "files": [
+        "SKILL.md",
+        "cps_chunker.py",
+        "cps_embedder.py",
+        "cps_graph.py",
+        "cps_server.py",
+        "cps_test_suite.py"
+      ],
+      "description": "Canonical menu-driven CPS installer (Core or Full). Nested cps-query.skill and cps-refresh.skill sub-skills are NOT bundled in src; cps-setup must be updated to fetch them via plan_b_install at install time."
     }
   }
 }
