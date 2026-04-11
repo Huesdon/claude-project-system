@@ -2,16 +2,14 @@
 
 ## What is CPS?
 
-CPS is a **context engine with four modules** that runs a Cowork project's long-term operating discipline. It is not just a search index — it's the backbone that keeps knowledge, tasks, documentation, and session/token use coherent across every session in a project.
+CPS is **a Claude Cowork project management and task-flow system for developing solutions with Cowork.** It turns a Cowork project into a place where work gets planned, executed, and learned from across sessions — not restarted every conversation. Four modules deliver it, all wired into the project `CLAUDE.md` during install:
 
-**The engine.** A local semantic index (SQLite + sqlite-vec + ONNX `all-MiniLM-L6-v2`) that ingests project markdown and JSON and answers cited queries in ~1K tokens instead of raw file reads costing 3–12K tokens. Invoked on demand via subprocess CLI — no background process.
+1. **Task Management** — Tiered backlog in `Reference/Claude/tasks.json` (T1/T2/T3/Roadmap), surfaced at session start, managed by the `task` skill. The daily flow: add, prioritize, work, log, promote.
+2. **Knowledge Management** — Five-bucket capture (Patterns / Decisions / Lessons / Ideas / Roadmap) under `Reference/`, written via `cps-capture`. Decisions stop getting relitigated, ideas become roadmap items become shipped tasks.
+3. **Documentation Management** — Markdown-first single-source-of-truth under `Documentation/md/` and `Reference/`, enforced by the 200-line TOC companion rule so large docs stay navigable.
+4. **Session & Token Management** — Document access hierarchy, routing table, and Haiku delegation rules that make each Cowork session cheap, predictable, and continuous with the last one.
 
-**The four modules.**
-
-1. **Knowledge Management** — Three-bucket taxonomy (Patterns / Decisions / Lessons) under `Reference/`, written via `cps-capture` and searched via `cps-query`.
-2. **Task Management** — Tiered backlog in `Reference/Claude/tasks.json`, surfaced at session start, managed by the `task` skill.
-3. **Documentation Management** — Markdown-first single-source-of-truth under `Documentation/md/` and `Reference/`, enforced by the 200-line TOC companion rule.
-4. **Session & Token Management** — Document access hierarchy, session hygiene rules, and Haiku delegation — all wired into the project `CLAUDE.md` during install.
+**Retrieval layer.** Full profile adds a local semantic index (SQLite + sqlite-vec + ONNX `all-MiniLM-L6-v2`) that ingests project markdown and JSON and answers cited queries in ~1K tokens instead of 3–12K for raw reads. Invoked on demand via subprocess CLI — no background process. On smaller projects, grep over `Reference/` and `Documentation/md/` does the same job.
 
 **CPS ships in two profiles:**
 
