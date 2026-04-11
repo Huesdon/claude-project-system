@@ -1,0 +1,632 @@
+---
+name: cps-setup
+description: >
+  Canonical installer for the Claude Project System (CPS). Deploys either CPS
+  Core (scaffold + three pillars, grep retrieval) or CPS Full (Core + Python
+  runtime + semantic search + knowledge graph) into a target Cowork project
+  folder. Handles fresh installs, Core→Full upgrades, runtime redeploys, and
+  full reinstalls. Solo-developer, single-machine by design. Pairs with
+  cps-init in the cps-installers plugin; operational pillars (task,
+  cps-capture, cps-query, cps-refresh) must be installed globally.
+  Triggers on: "cps-setup", "install cps", "set up cps", "deploy cps",
+  "bootstrap cps", "install cps core", "install cps full", "upgrade cps to
+  full", "add project brain", "set up knowledge base".
+---
+
+# cps-setup — CPS Installer (rev 12)
+
+> **Rev 12 (2026-04-11):** Ported into the `cps-installers` plugin and
+> refactored Step 8 to fetch Python runtime from GitHub at deploy time.
+> Source and distribution moved from `/mnt/.claude/skills/cps-setup/` to
+> `plugins/cps-installers/skills/cps-setup/` in the CPS source-of-truth repo.
+> Install path is now `/plugin install cps-installers@cps --scope project`
+> instead of a global `.skill` bundle. The plugin bundles SKILL.md only —
+> `cps_server.py`, `cps_chunker.py`, `cps_embedder.py`, `cps_graph.py`, and
+> `cps_test_suite.py` are fetched fresh from
+> `raw.githubusercontent.com/Huesdon/cowork-project-system/main/Runtime/`
+> on every Full-profile deploy (byte-exact via `curl`, not `WebFetch`).
+> Runtime source of truth is `Runtime/*.py` on `main` — never a bundled
+> copy. Step 1 pillar check updated: `cps-init` ships in the same plugin
+> and is assumed available whenever `cps-setup` is invoked; the global
+> check now covers only `task`, `cps-capture`, `cps-query`, `cps-refresh`.
+>
+> **Rev 11 (2026-04-11):** Scope-correction and bundle repair. Reworded
+> "single-tenant / one source-of-truth project" framing to the accurate
+> solo-developer / single-machine / multi-project model.
+>
+> **Rev 10 (2026-04-11):** Full rewrite from first principles. All "bundle
+> distribution" language removed. Steps renumbered and collapsed: 12 steps
+> total, single linear flow with gates. Reconstructed Steps 11–12 that
+> rev 6 truncated mid-heading.
+>
+> **Prior revs retained for history:** Rev 9 (Step 6 wording), Rev 8 (five
+> buckets), Rev 7 (runtime rebundle), Rev 6 (MCP wiring removed), Rev 5
+> (self-heal), Rev 4 (dead-gear removal), Rev 3 (py_compile gate), Rev 2
+> (Phase 8 stragglers). Full history: `Reference/CPS_Phase_History.md`.
+
+## Purpose
+
+Deploy CPS into a target Cowork project folder. Two profiles:
+
+- **CPS Core** — `Reference/` scaffold, canonical reference docs, CLAUDE.md
+  §9/§11/§12 pointer sections. Grep and the §11 TOC rule do retrieval. Zero
+  runtime, zero dependencies. Fits any project under ~100 markdown files.
+- **CPS Full** — Core + `.cps/` Python runtime + SQLite semantic index +
+  ONNX embeddings + knowledge graph. Required once the project outgrows grep
+  (~100+ files / ~10K+ markdown lines). Adds ~5 MB of runtime plus the index.
+
+Full is a strict superset of Core. Upgrading Core → Full is additive — no
+migration, no schema change, no rewrites. Design rationale and profile details:
+`Reference/CPS_Design.md` in the CPS source-of-truth project.
+
+## Solo-developer assumption
+
+CPS is a solo-developer, single-machine system. One developer (Shane), one
+machine, any number of Cowork project folders. The CPS source-of-truth repo
+lives at `github.com/Huesdon/cowork-project-system`. This installer pairs
+with `cps-init` inside the `cps-installers` plugin — the two skills ship
+together and are installed per-project via the plugin marketplace. The
+operational pillar skills (`task`, `cps-capture`, `cps-query`, `cps-refresh`)
+remain installed once, globally, at `/mnt/.claude/skills/`. This installer
+does not bundle, present, or install operational pillars — it assumes they
+are already there. Step 1 verifies the assumption and halts if it fails.
+
+## Plugin contents
+
+This skill ships SKILL.md only — no Python source, no `.skill` bundle. The
+five `.cps/` runtime modules (`cps_server.py`, `cps_chunker.py`,
+`cps_embedder.py`, `cps_graph.py`, `cps_test_suite.py`) are fetched fresh
+from GitHub at deploy time (Step 8) via `curl` against
+`raw.githubusercontent.com/Huesdon/cowork-project-system/main/Runtime/`.
+Runtime source of truth is `Runtime/*.py` on `main`.
+
+Full-only — Core installs skip the runtime deploy entirely.
+
+## Profile comparison
+
+| Capability | Core | Full |
+|---|---|---|
+| Reference/ scaffold | ✅ | ✅ |
+| CLAUDE.md §9/§11/§12 pointer sections | ✅ | ✅ |
+| `task` skill (backlog) | ✅ | ✅ |
+| `cps-capture` skill (knowledge capture) | ✅ | ✅ |
+| Semantic search | ❌ | ✅ |
+| Knowledge graph | ❌ | ✅ |
+| Python runtime + .cps/ | ❌ | ✅ |
+| `cps-query` / `cps-refresh` | ❌ | ✅ |
+
+---
+
+## Step 1 — Pre-flight detection
+
+Compute `project_root` — the mounted Cowork workspace folder (NOT any
+`/sessions/...` path).
+
+Probe current state:
+
+- `existing_runtime` = `(project_root / ".cps/cps_config.json").exists()`
+- `existing_core` = all three original buckets present:
+  `Reference/Patterns/_INDEX.md`, `Reference/Decisions/_INDEX.md`,
+  `Reference/Lessons/_INDEX.md`. Missing `Reference/Ideas/` or
+  `Reference/Roadmap/` is tolerated — Step 7 repairs them.
+
+Verify global operational pillar skills are installed. For each of `task`,
+`cps-capture`, `cps-query`, `cps-refresh`, check
+`~/.claude/skills/<name>/SKILL.md` OR `~/.claude/skills/<name>.skill`. If any
+are missing, halt with:
+
+> *"Operational pillar `<name>` is not installed globally. Reinstall it from
+> `github.com/Huesdon/cowork-project-system/Skills/<name>.skill` first, then
+> re-run cps-setup."*
+
+Do not check for `cps-init` globally — it ships in the same `cps-installers`
+plugin as this skill and is already available whenever this skill runs.
+
+## Step 2 — Profile menu
+
+Branch on detected state:
+
+**If `existing_runtime == True`:** runtime already deployed. Present
+`AskUserQuestion`:
+
+- **Upgrade runtime** — redeploy `.cps/*.py` by re-fetching from GitHub,
+  keep index and config, skip ingest. Use when `Runtime/*.py` has drifted
+  on `main`.
+- **Reinstall** — delete `cps.db`, `cps.db-journal`, `cps_manifest.json`,
+  then full redeploy + full reindex. Use when the index is corrupted or a
+  schema change landed.
+- **Cancel** — no-op.
+
+Store as `profile ∈ {upgrade_runtime, reinstall}`. Skip the fresh-install menu.
+
+**If `existing_runtime == False`:** present `AskUserQuestion`:
+
+- **Core** — scaffold + three pillars. No runtime. Recommended for projects
+  under ~100 files.
+- **Full** — Core + Python runtime + semantic search. Recommended for
+  projects over ~100 files / ~10K markdown lines.
+- **Upgrade Core → Full** — only offer if `existing_core == True`. Runs
+  validation + deploys runtime, skips the scaffold rewrite.
+
+Store as `profile ∈ {core, full, upgrade_core_to_full}`.
+
+## Step 3 — Prerequisites check
+
+**Core-only installs:** no checks. Continue.
+
+**Any Full-path profile** (`full`, `upgrade_core_to_full`, `upgrade_runtime`,
+`reinstall`): run every time — no skip-on-upgrade.
+
+1. `python3 --version` → must be ≥ 3.10. Halt with install instructions if
+   lower or missing.
+2. Test write access: `Path(project_root / ".cps_preflight").touch()` then
+   `unlink()`. Halt on `PermissionError`.
+3. Test `pip` availability: `pip --version`. Halt if missing.
+4. Test outbound HTTPS: `curl -fsSL -I https://raw.githubusercontent.com`
+   returns 2xx or 3xx. Halt if network is unreachable — Step 8 needs it.
+
+Report results inline and proceed only if all four pass.
+
+## Step 4 — Install plan preview + approval
+
+Show the user exactly what will happen, profile-aware. Example for Full:
+
+```
+CPS Full install plan:
+  1. Invoke cps-init               [writes Reference/ scaffold + CLAUDE.md pointers]
+  2. Validate Core scaffold        [five buckets + CLAUDE.md pointer sections]
+  3. Fetch + deploy .cps/ runtime  [5 .py files fetched from GitHub, verified with py_compile]
+  4. Collect source paths          [AskUserQuestion multiSelect]
+  5. Write cps_config.json
+  6. Install pip dependencies      [sqlite-vec, huggingface-hub, tokenizers]
+  7. Initial cps_ingest            [index source_paths]
+  8. Build knowledge graph
+  9. Run cps_test_suite.py         [halt on any fail]
+ 10. Summary
+```
+
+Example for Core:
+
+```
+CPS Core install plan:
+  1. Invoke cps-init               [writes Reference/ scaffold + CLAUDE.md pointers]
+  2. Summary
+```
+
+Example for `upgrade_runtime`:
+
+```
+CPS runtime upgrade plan:
+  1. Fetch + deploy .cps/ runtime  [5 .py files fetched from GitHub, verified with py_compile]
+  2. Install pip dependencies      [verify imports only if already installed]
+  3. Run cps_test_suite.py         [halt on any fail]
+  4. Summary
+```
+
+Single `AskUserQuestion` gate: **Proceed** / **Cancel**. One approval, no
+mid-flight re-prompts.
+
+## Step 5 — Invoke cps-init (scaffold)
+
+Skip on `profile ∈ {upgrade_runtime, reinstall}` (scaffold already present).
+
+Invoke the `cps-init` skill (same plugin) against `project_root`. cps-init
+runs `cps_scaffold.py` via Python and writes:
+
+- `Reference/Claude/` (empty, populated later by the `task` skill)
+- Five bucket dirs with `_INDEX.md` stubs: `Reference/Patterns/`,
+  `Reference/Decisions/`, `Reference/Lessons/`, `Reference/Ideas/`,
+  `Reference/Roadmap/`
+- Canonical reference docs: `Reference/CPS_Task_Module.md`,
+  `Reference/CPS_TOC_Rule.md`, `Reference/CPS_Capture_Taxonomy.md`
+- CLAUDE.md §9 (Task Module), §11 (TOC Rule), §12 (Capture Taxonomy) pointer
+  sections. cps-init preserves existing CLAUDE.md content and updates section
+  blocks only when the skill-embedded rev is newer than the on-disk rev.
+
+cps-init is idempotent — safe to invoke on an already-scaffolded project.
+
+Halt cps-setup if cps-init errors. Do not continue with a half-written
+scaffold.
+
+## Step 6 — Core path termination
+
+If `profile == core`, skip to Step 12 (Summary). Everything beyond this point
+is Full-only.
+
+## Step 7 — Core validation (Full-path only)
+
+Skip on `profile == core`.
+
+When `existing_core == True` (fresh Full install against an existing Core
+scaffold, or any upgrade path), validate the scaffold before touching the
+runtime:
+
+```
+required = {
+    "Reference/Claude/":                                is_dir,
+    "Reference/Patterns/_INDEX.md":                     exists,
+    "Reference/Decisions/_INDEX.md":                    exists,
+    "Reference/Lessons/_INDEX.md":                      exists,
+    "Reference/CPS_Task_Module.md":                     exists,
+    "Reference/CPS_TOC_Rule.md":                        exists,
+    "Reference/CPS_Capture_Taxonomy.md":                exists,
+    "CLAUDE.md §9 Task Module pointer":                 regex in CLAUDE.md,
+    "CLAUDE.md §11 TOC Rule pointer":                   regex in CLAUDE.md,
+    "CLAUDE.md §12 Capture Taxonomy pointer":           regex in CLAUDE.md,
+}
+repairable = {
+    "Reference/Ideas/_INDEX.md":                        exists_or_repair,
+    "Reference/Roadmap/_INDEX.md":                      exists_or_repair,
+}
+```
+
+**Required items:** any miss → halt, report exact missing pieces, offer
+**Fix with cps-init** / **Cancel** via `AskUserQuestion`. "Fix with cps-init"
+re-invokes Step 5 then re-runs this validation.
+
+**Repairable items:** if missing, create the dir and write the `_INDEX.md`
+stub inline (same content as `cps_scaffold.py` emits). Do not halt. Report as
+`REPAIRED` in the Step 12 summary table.
+
+Fresh Full installs against an empty project (no `existing_core`) skip this
+step — Step 5 already created everything from scratch.
+
+## Step 8 — Fetch + deploy Python runtime (from GitHub)
+
+Skip on `profile == core`.
+
+Fetch the five runtime modules from the CPS source-of-truth repo on `main`
+and deploy them to `project_root / ".cps/"`. Runtime source of truth is
+`Runtime/*.py` on `main` — never a bundled copy inside this plugin or a
+locally cached one.
+
+**Files to fetch:**
+
+| File | Approx size | Role |
+|---|---|---|
+| `cps_server.py` | ~64 KB | MCP stdio server, ingest/search/status/graph entrypoints |
+| `cps_chunker.py` | ~18 KB | Markdown + code chunker |
+| `cps_embedder.py` | ~9 KB | ONNX embedding pipeline |
+| `cps_graph.py` | ~20 KB | Knowledge graph builder |
+| `cps_test_suite.py` | ~15 KB | Post-install smoke test |
+
+**Fetch via `curl`.** Bytes must be byte-exact — `WebFetch` passes raw
+Python through an LLM and will corrupt it silently. Use Bash + `curl`.
+
+```bash
+TMPDIR=$(mktemp -d -t cps-setup-XXXXXX)
+BASE_URL="https://raw.githubusercontent.com/Huesdon/cowork-project-system/main/Runtime"
+
+for f in cps_server.py cps_chunker.py cps_embedder.py cps_graph.py cps_test_suite.py; do
+  curl -fsSL "$BASE_URL/$f" -o "$TMPDIR/$f" || { echo "curl failed for $f"; exit 1; }
+done
+```
+
+**Per-file sanity checks (mandatory) — abort if any fail.** For each
+fetched file in `$TMPDIR`:
+
+1. File exists and is non-empty.
+2. File parses as valid Python (`ast.parse(content)` must not raise).
+3. Size is at least 5,000 bytes (all five files are >8 KB — catches
+   truncated fetches).
+4. First line is `#!/usr/bin/env python3` OR starts with a docstring/import
+   (Python source, not an HTML 404 page).
+
+Sample combined check (Python):
+
+```python
+import ast, pathlib, sys
+tmp = pathlib.Path("$TMPDIR")
+required = ["cps_server.py", "cps_chunker.py", "cps_embedder.py",
+            "cps_graph.py", "cps_test_suite.py"]
+for name in required:
+    p = tmp / name
+    if not p.exists() or p.stat().st_size < 5000:
+        sys.exit(f"{name}: missing or too small ({p.stat().st_size if p.exists() else 0} bytes)")
+    src = p.read_text(encoding="utf-8")
+    try:
+        ast.parse(src)
+    except SyntaxError as e:
+        sys.exit(f"{name}: not valid Python — {e}")
+print("ok")
+```
+
+If any check fails, halt the install with:
+
+> *"ERROR: fetched `<filename>` failed sanity check — aborting to prevent
+> deploying a corrupted or truncated runtime. Check network connectivity
+> and `https://github.com/Huesdon/cowork-project-system/tree/main/Runtime`."*
+
+Clean up `$TMPDIR` before exit on halt.
+
+**Write into `.cps/` via `Path.write_text()`, not `shutil.copy()` and not
+bash `cp`.** Both shutil and bash silently truncate large files on Cowork
+FUSE mounts. After each write, read back and assert
+`written.count("\n") == src.count("\n")`. Raise `RuntimeError` on mismatch
+— do not continue with a half-written runtime.
+
+If the destination file exists and is read-only, `chmod(0o644)` it first. Do
+not delete-then-copy — changing the inode breaks any running server's file
+handle on self-hosting installs.
+
+On `profile == reinstall`, first delete `cps.db`, `cps.db-journal`, and
+`cps_manifest.json` before deploying.
+
+**py_compile gate.** After all 5 files are written and line-count asserted,
+compile each in-process to catch corruption that line counts miss (null bytes,
+truncation mid-statement, encoding damage):
+
+```python
+import py_compile
+runtime_files = ["cps_server.py", "cps_chunker.py", "cps_embedder.py",
+                 "cps_graph.py", "cps_test_suite.py"]
+for f in runtime_files:
+    try:
+        py_compile.compile(str(cps_dir / f), doraise=True)
+    except py_compile.PyCompileError as e:
+        raise RuntimeError(f"Deployed {f} failed py_compile: {e}")
+```
+
+Halt the install before Step 9 if any file fails — a corrupted runtime is
+unrecoverable downstream, and a Step 11 test-suite failure would be the first
+symptom otherwise. Clean up `$TMPDIR` before exit.
+
+**Network requirement.** This step requires outbound HTTPS to
+`raw.githubusercontent.com`. Offline environments will fail here and at
+Step 3. There is no bundled fallback by design — the whole point of the
+plugin split is to keep Python source on GitHub rather than inside the
+plugin.
+
+**Clean up `$TMPDIR`** after successful deploy.
+
+## Step 9 — Collect source paths + write config
+
+Skip on `profile ∈ {upgrade_runtime, reinstall}` (config already present).
+
+**Disk-presence check first.** Before showing the picker, probe each candidate
+path under `project_root`:
+
+```python
+candidates = [
+    ("Documentation/md/**/*.md", "Documentation/md"),
+    ("Reference/**/*.md",        "Reference"),
+    ("Input/**/*.md",            "Input"),
+    ("Source/**/*.py",           "Source"),
+    ("Source/**/*.js",           "Source"),
+    ("Reference/**/*.json",      "Reference"),
+]
+present = {glob: (project_root / dirpath).is_dir() for glob, dirpath in candidates}
+```
+
+Present `AskUserQuestion` (multiSelect) over the six candidates. Display rules:
+
+- **Default-on** — path exists on disk AND is a markdown default
+  (`Documentation/md/**/*.md`, `Reference/**/*.md`, or `Input/**/*.md`).
+- **Default-off, shown** — path exists but isn't a markdown default
+  (the `Source/` and `Reference/**/*.json` globs).
+- **Suffixed `(not present — will skip)`** — path does not exist on disk.
+  Default-off. Still selectable in case the user plans to create it before
+  first ingest, but never default-on.
+
+Allow custom paths via the question's "Other" option.
+
+Rationale: defaulting a non-existent path on (pre-rev-7 behavior) caused fresh
+installs to ingest 0 files when users accepted picker defaults without reading
+them. As of CPS_Design.md rev 4 §4.2, `cps-init` scaffolds an empty
+`Documentation/md/` so the default Full source path always resolves. The
+disk-presence gate here is belt-and-suspenders defense for upgrade paths,
+custom source paths, and older `cps-init` revs that didn't scaffold
+`Documentation/`.
+
+**Post-pick validation.** After the user picks, re-verify each selected path:
+
+- If the user knowingly chose a missing path: warn once and proceed (they may
+  create it before the first refresh).
+- If every selected path is missing: halt with *"No selected source path
+  exists on disk. Pick a path that exists or create one before re-running
+  cps-setup."* Do not proceed to ingest a 0-file index.
+
+Write `project_root / ".cps/cps_config.json"`:
+
+```json
+{
+  "cps_dir": ".cps",
+  "project_root": ".",
+  "namespace": "<lowercase hyphenated folder name>",
+  "source_paths": ["<from prompt>"],
+  "embedding_model": "all-MiniLM-L6-v2",
+  "embedding_dim": 384,
+  "chunk_min_tokens": 50,
+  "chunk_max_tokens": 2000,
+  "search_default_limit": 5,
+  "cache": {"similarity_threshold": 0.05, "max_age_hours": 24}
+}
+```
+
+**`cps_dir` and `project_root` MUST be relative.** Absolute paths embed the
+session ID and break on every new Cowork conversation.
+
+**Namespace** is a display label only — chunk-ID prefixing and cross-project
+search were removed in CPS rev 11. Default to the lowercase, hyphenated
+project folder name. Do not prompt unless the user asks to override.
+
+**Do NOT include `auto_refresh_on_startup`** — removed in rev 11. Auto-refresh
+is now driven by `cps_status.needs_refresh` (new files or large markdown
+deltas).
+
+Show config to user, confirm via `AskUserQuestion` (**Proceed** / **Edit**).
+On Edit, re-run the picker.
+
+## Step 10 — Install dependencies (with import verification)
+
+Skip on `profile == core`.
+
+Install the three pip-managed dependencies:
+
+```bash
+pip install sqlite-vec huggingface-hub tokenizers --break-system-packages
+```
+
+`onnxruntime` and `numpy` are pre-installed in the Cowork sandbox — do not
+reinstall.
+
+**After the install, verify imports in a subprocess** to confirm the wheels
+landed and are loadable. A successful `pip install` return code is not
+sufficient — silent ABI mismatches produce "installed but import fails"
+failures that only surface mid-ingest:
+
+```python
+import subprocess, sys
+verify_script = (
+    "import sqlite_vec, huggingface_hub, tokenizers, "
+    "numpy, onnxruntime; print('ok')"
+)
+result = subprocess.run(
+    [sys.executable, "-c", verify_script],
+    capture_output=True, text=True
+)
+if result.returncode != 0 or "ok" not in result.stdout:
+    raise RuntimeError(
+        f"Dependency import verification failed:\n{result.stderr}"
+    )
+```
+
+Halt the install on any import failure. Report the failing module inline.
+
+On `profile == upgrade_runtime`, the install step is still run — pip is a
+no-op when packages are already at the right version, and the import
+verification catches any post-upgrade ABI drift.
+
+## Step 11 — Initial ingest + graph build + test suite
+
+Skip on `profile == core`.
+
+Run the three-phase Full-path validation. Any phase failure halts the install
+before Step 12 — a failed install must not report success.
+
+### 11a — Initial ingest
+
+Invoke:
+
+```bash
+python .cps/cps_server.py ingest
+```
+
+from `project_root`. The subprocess discovers `source_paths` from
+`cps_config.json`, chunks every matching file, embeds each chunk, and writes
+to `cps.db`.
+
+Capture and parse the JSON response. Required fields:
+
+- `files_indexed` > 0 (unless the project is genuinely empty — warn, do not
+  halt, if the user chose an empty source path knowingly)
+- `chunks_written` > 0 on any non-zero `files_indexed`
+- `errors` is empty or absent
+
+Halt on any parse failure, non-zero exit code, or populated `errors` field.
+
+### 11b — Build knowledge graph
+
+Invoke:
+
+```bash
+python .cps/cps_server.py graph_build
+```
+
+Capture the response. Required: `nodes > 0`, `edges >= 0`, `errors` empty.
+Halt on failure.
+
+### 11c — Test suite
+
+Invoke:
+
+```bash
+python .cps/cps_test_suite.py
+```
+
+The test suite self-bootstraps its deps (sqlite-vec, huggingface-hub,
+tokenizers, onnxruntime, numpy) via `_bootstrap_deps()` and exercises every
+MCP tool surface: `cps_search`, `cps_retrieve`, `cps_status`, `cps_ingest`,
+`cps_prime`, `cps_purge`, `cps_graph_build`, `cps_graph_query`.
+
+Require exit code 0. Any non-zero exit halts the install with the test
+suite's stderr reported inline. Do not proceed to the summary on a failing
+test suite — that was the whole point of the gate.
+
+On `profile == upgrade_runtime`, 11a is still run so the test suite exercises
+the ingest pipeline end-to-end against the redeployed runtime. This is the
+only way to verify the self-hosting `sync_runtime_to_cps()` hook is working.
+
+## Step 12 — Summary
+
+Print a single compact report. Profile-aware. Example for a clean Full install:
+
+```
+╭─ CPS Full install complete ─────────────────────────────────
+│ profile:          full
+│ project_root:     /mnt/<folder>
+│ scaffold:         OK        (5 buckets, 3 reference docs)
+│ runtime:          OK        (5 .py files fetched + py_compile clean)
+│ config:           OK        (source_paths: Documentation/md, Reference)
+│ dependencies:     OK        (sqlite-vec, huggingface-hub, tokenizers)
+│ ingest:           OK        (N files, M chunks, K tokens)
+│ graph:            OK        (X nodes, Y edges)
+│ test suite:       OK        (Z tests passed)
+╰──────────────────────────────────────────────────────────────
+
+Next steps:
+  • Run `cps-query` to search the index.
+  • Run `cps-refresh` after any doc edits.
+  • Run `cps-capture` to add patterns/decisions/lessons/ideas/roadmap items.
+  • Disable the `cps-installers` plugin (`/plugin disable cps-installers`)
+    if you want the install-time skills off the session load until the next
+    force-upgrade.
+```
+
+For Core:
+
+```
+╭─ CPS Core install complete ─────────────────────────────────
+│ profile:          core
+│ project_root:     /mnt/<folder>
+│ scaffold:         OK        (5 buckets, 3 reference docs)
+│ CLAUDE.md:        OK        (§9, §11, §12 pointer sections)
+╰──────────────────────────────────────────────────────────────
+
+Next steps:
+  • Use grep + the §11 TOC rule for retrieval.
+  • Run `task` to manage the backlog.
+  • Run `cps-capture` to add patterns/decisions/lessons/ideas/roadmap items.
+  • Re-run `cps-setup` and choose "Upgrade Core → Full" when the project
+    crosses ~100 files.
+  • Disable the `cps-installers` plugin (`/plugin disable cps-installers`)
+    to drop the install-time skills from the session load.
+```
+
+For upgrade paths, list only the steps that ran and their results. Flag any
+`REPAIRED` items from Step 7 in a dedicated row.
+
+The summary is the only success signal. If Step 11 halted, the summary never
+prints — the user sees the halt reason and resolves it before re-running.
+
+---
+
+## Error recovery
+
+Every halt in this skill is recoverable. The halts are:
+
+| Halt point | Recovery |
+|---|---|
+| Step 1 missing operational pillar | Reinstall the named skill globally from the CPS source tree, re-run cps-setup |
+| Step 3 python/pip/write-access/network | Fix the environment issue, re-run cps-setup |
+| Step 5 cps-init error | Read the cps-init error, fix the project state, re-run cps-setup |
+| Step 7 required item missing | Pick "Fix with cps-init" to re-scaffold |
+| Step 8 fetch / sanity-check failure | Verify `https://github.com/Huesdon/cowork-project-system/tree/main/Runtime` is reachable and the files are valid Python; re-run cps-setup |
+| Step 8 `py_compile` failure | The runtime source on `main` is corrupted upstream — fix `Runtime/*.py` in the CPS repo, push to main, re-run cps-setup |
+| Step 9 all source paths missing | Create at least one source directory, re-run cps-setup |
+| Step 10 import verification failure | Check pip output, clear pip cache if needed, re-run cps-setup |
+| Step 11a/11b/11c failure | Read the reported error — likely a runtime bug, file an issue in the CPS source-of-truth project |
+
+The installer is idempotent. Re-running after a halt resumes from Step 1 and
+re-detects state. Completed phases (scaffold present, runtime deployed) are
+skipped via the branch logic in Step 2 and the per-step skip conditions.
