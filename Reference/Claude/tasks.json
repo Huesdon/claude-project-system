@@ -1,30 +1,122 @@
 {
   "meta": {
-    "last_updated": "2026-04-10",
-    "last_updated_note": "completed t1-github-recovery-helper (Runtime/gh_pull.py); 2 follow-ups remain",
-    "completions_since_reprioritization": 7,
+    "last_updated": "2026-04-11",
+    "last_updated_note": "completed: Add complexity field to task schema and ADD flow",
+    "completions_since_reprioritization": 12,
     "reprioritize_threshold": 10,
-    "last_reprioritized": "2026-04-10",
-    "reprioritization_strategy": "dependency-first"
+    "last_reprioritized": "2026-04-11",
+    "reprioritization_strategy": "dependency-first",
+    "flow_metrics": {
+      "completions": [
+        {
+          "id": "t2-toc-move-5-flow-metrics",
+          "tier": "T2",
+          "constraint_alignment": "elevates",
+          "started": "2026-04-11",
+          "completed": "2026-04-11",
+          "cycle_time_days": 0,
+          "captures_emitted": 0
+        },
+        {
+          "id": "t3-add-complexity-field",
+          "tier": "T3",
+          "constraint_alignment": "elevates",
+          "started": null,
+          "completed": "2026-04-11",
+          "cycle_time_days": 0,
+          "captures_emitted": 0,
+          "complexity": 1
+        }
+      ],
+      "summary_interval": 5,
+      "last_summary_at": 0
+    },
+    "current_constraint": "attention",
+    "current_constraint_set": "2026-04-11",
+    "current_constraint_note": "Initial value per ToC flow redesign (Move 6). See Reference/Patterns/2026-04-11-toc-flow-discipline.md.",
+    "constraint_rationale": "Structural analysis: flat backlog (no single task blocks 3+). Human-bandwidth axis: decision gates are the binding limit. Throughput test: unlimited review time would increase completions. Validated per constraint-identification pattern §3.",
+    "constraint_modifier": "decision-bandwidth",
+    "project_type": "cps-dev",
+    "project_goal": {
+      "statement": "Maximize validated dev throughput per unit of Shane's decision-bandwidth.",
+      "constraint_link": "attention",
+      "set_date": "2026-04-11"
+    },
+    "module_goals": [
+      {
+        "module": "tasks",
+        "goal": "Maintain a constraint-aligned backlog where the top item is always the highest-leverage next action."
+      },
+      {
+        "module": "knowledge",
+        "goal": "Ensure every plan-mode entry has prior-art hits from indexed Reference and Documentation."
+      },
+      {
+        "module": "docs",
+        "goal": "Propagate every design decision to Reference/ in the same session it is made."
+      },
+      {
+        "module": "sessions",
+        "goal": "Minimize constraint-time per session by batching gates and pre-staging context."
+      }
+    ]
   },
   "tasks": [
     {
-      "id": "t2-cps-init-webfetch-scaffold",
-      "title": "Refactor cps-init to WebFetch cps_scaffold.py from GitHub main at runtime",
+      "id": "t2-toc-flow-retrospective",
+      "title": "Draft post-implementation ToC retrospective doc validating predictions in concept-toc-flow-analysis.md §5.1",
       "tier": "T2",
-      "status": "pending",
-      "description": "Eliminate the 'rebundle cps-init.skill on scaffold edit' house rule by having cps-init pull cps_scaffold.py (and the .ps1/.cmd wrappers) from raw.githubusercontent.com at install time, same pattern as cps-patcher's catalog fetch. Removes one of two remaining rebundle disciplines. Requires the recovery helper pattern to be proven first so we share the fetch+verify code path.",
-      "depends_on": [],
-      "unblocks": []
+      "status": "blocked",
+      "description": "After Now-tier moves land AND Move 5 produces 10+ completion records, draft Documentation/md/concept-toc-flow-results.md comparing predicted vs measured.",
+      "depends_on": [
+        "t1-toc-move-1-wip-cap",
+        "t1-toc-move-4-negative-branches",
+        "t1-toc-move-6-constraint-aligned-recommend",
+        "t1-toc-move-9-rule-audit",
+        "t2-toc-move-5-flow-metrics"
+      ],
+      "unblocks": [],
+      "constraint_alignment": "exploits",
+      "complexity": 2
     },
     {
-      "id": "t2-cps-releases-skill-distribution",
-      "title": "Distribute .skill bundles via GitHub Releases instead of hand-delivery",
+      "id": "t2-toc-move-3-plan-buffer",
+      "title": "Move 3 — Implement plan buffer: Haiku pre-stages cps-query hits before plan mode",
       "tier": "T2",
-      "status": "pending",
-      "description": "Tag CPS versions (v8.7, v8.8...) and attach .skill files as release assets. cps-patcher / cps-setup can then fetch the latest skill bundles directly from the release, decoupling skill updates from the manual rebundle+present_files cycle. Downstream projects get current skills without Shane hand-delivering each one. Larger scope — design the release cadence and which skills ship where.",
+      "status": "in_progress",
+      "started_at": "2026-04-11",
+      "description": "Update task RECOMMEND to invoke Haiku cps-query against task domain; stage hits in plan_buffer.md or session scratch before Sonnet enters plan mode.",
       "depends_on": [],
-      "unblocks": []
+      "unblocks": [
+        "t3-toc-move-7-buffer-penetration"
+      ],
+      "constraint_alignment": "subordinates",
+      "complexity": 2
+    },
+    {
+      "id": "t3-toc-move-10-roadmap-horizon",
+      "title": "Move 10 — Enforce Roadmap horizon field and Now-item promote-or-archive flag",
+      "tier": "T3",
+      "status": "pending",
+      "description": "Update cps-capture Roadmap template to require horizon field; flag Now items >14 days for promote-or-archive on next REPRIORITIZE.",
+      "depends_on": [],
+      "unblocks": [],
+      "constraint_alignment": "exploits",
+      "complexity": 1
+    },
+    {
+      "id": "t3-toc-move-7-buffer-penetration",
+      "title": "Move 7 — Add buffer-penetration flag for first-of-kind tasks in RECOMMEND",
+      "tier": "T3",
+      "status": "pending",
+      "description": "Update RECOMMEND to mark tasks with zero cps-query hits as first-of-kind; budget extra plan time per CCPM buffer management.",
+      "depends_on": [
+        "t2-toc-move-3-plan-buffer",
+        "t2-toc-move-5-flow-metrics"
+      ],
+      "unblocks": [],
+      "constraint_alignment": "subordinates",
+      "complexity": 1
     }
   ]
 }
