@@ -12,8 +12,17 @@ description: >
   full", "add project brain", "set up knowledge base".
 ---
 
-# cps-setup — CPS Installer (rev 13)
+# cps-setup — CPS Installer (rev 14)
 
+> **Rev 14 (2026-04-11):** Step 10 dependency install hardened. Rev 13 listed
+> only the three top-level deps (`sqlite-vec huggingface-hub tokenizers`); pip
+> resolved 18 transitive packages and the install hung mid-bootstrap on
+> `onnxruntime` / `hf-xet` wheel fetch during a Full install at
+> `H:\Claude Cowork\Projects\MSB`. Step 10 now installs the **full pinned
+> 18-package set** with explicit versions, declares an expected duration
+> (60–120s warm, 300s abort threshold), and warns that `onnxruntime` and
+> `hf-xet` are the heavy fetches. Lesson: `Reference/Lessons/2026-04-11-cps-setup-step11a-dep-install.md`.
+>
 > **Rev 13 (2026-04-11):** Step 3 write-access probe hardened — locked filename
 > to `.cps_preflight`, mandatory `try/finally` with `unlink(missing_ok=True)`,
 > explicit "no improvisation" wording. New Step 12a stray-probe sweep removes
@@ -201,7 +210,7 @@ CPS Full install plan:
   3. Deploy .cps/ runtime          [5 .py files, verified with py_compile]
   4. Collect source paths          [AskUserQuestion multiSelect]
   5. Write cps_config.json
-  6. Install pip dependencies      [sqlite-vec, huggingface-hub, tokenizers]
+  6. Install pip dependencies      [18 pinned wheels — see Step 10, ~60–120s]
   7. Initial cps_ingest            [index source_paths]
   8. Build knowledge graph
   9. Run cps_test_suite.py         [halt on any fail]
@@ -221,7 +230,7 @@ Example for `upgrade_runtime`:
 ```
 CPS runtime upgrade plan:
   1. Deploy .cps/ runtime          [5 .py files, verified with py_compile]
-  2. Install pip dependencies      [verify imports only if already installed]
+  2. Install pip dependencies      [18 pinned wheels — imports re-verified]
   3. Run cps_test_suite.py         [halt on any fail]
   4. Summary
 ```
@@ -415,14 +424,46 @@ On Edit, re-run the picker.
 
 Skip on `profile == core`.
 
-Install the three pip-managed dependencies:
+Install the **full pinned dependency set**. Rev 13 and earlier listed only the
+three top-level intent packages (`sqlite-vec huggingface-hub tokenizers`) and
+let pip resolve transitives non-deterministically. That produced an 18-package
+transitive resolution, and a Full install at `H:\Claude Cowork\Projects\MSB`
+hung mid-bootstrap on the `onnxruntime` / `hf-xet` wheel fetch with no signal
+to the operator about which wheel was stalled. Pinning eliminates the
+non-determinism and tells the operator the exact surface area:
 
 ```bash
-pip install sqlite-vec huggingface-hub tokenizers --break-system-packages
+pip install --break-system-packages \
+  sqlite-vec \
+  annotated-doc==0.0.4 \
+  click==8.3.2 \
+  filelock==3.25.2 \
+  fsspec==2026.3.0 \
+  hf-xet==1.4.3 \
+  huggingface-hub==1.10.1 \
+  markdown-it-py==4.0.0 \
+  mdurl==0.1.2 \
+  numpy==2.4.4 \
+  onnxruntime==1.24.4 \
+  packaging==26.0 \
+  protobuf==7.34.1 \
+  pygments==2.20.0 \
+  pyyaml==6.0.3 \
+  rich==14.3.4 \
+  shellingham==1.5.4 \
+  tokenizers==0.22.2 \
+  typer==0.24.1
 ```
 
-`onnxruntime` and `numpy` are pre-installed in the Cowork sandbox — do not
-reinstall.
+**Expected duration:** 60–120s on a warm pip cache / fast network. **Abort
+threshold:** 300s. If the install has not completed in five minutes, it is
+stalled — almost always on `onnxruntime` (≈100 MB wheel) or `hf-xet` (model
+registry probe). Cancel the subprocess, clear pip cache (`pip cache purge`),
+and re-run. Pre-warm pip cache before deploying CPS Full to a cold machine.
+
+`sqlite-vec` is intentionally unpinned — its release cadence is fast and the
+ABI is stable. Every other package is pinned because `numpy` 3.x or
+`onnxruntime` major bumps will silently break the runtime.
 
 **After the install, verify imports in a subprocess** to confirm the wheels
 landed and are loadable. A successful `pip install` return code is not
@@ -540,7 +581,7 @@ Print a single compact report. Profile-aware. Example for a clean Full install:
 │ scaffold:         OK        (5 buckets, 3 reference docs)
 │ runtime:          OK        (5 .py files, py_compile clean)
 │ config:           OK        (source_paths: Documentation/md, Reference)
-│ dependencies:     OK        (sqlite-vec, huggingface-hub, tokenizers)
+│ dependencies:     OK        (18 pinned wheels, imports verified)
 │ ingest:           OK        (N files, M chunks, K tokens)
 │ graph:            OK        (X nodes, Y edges)
 │ test suite:       OK        (Z tests passed)
@@ -590,6 +631,7 @@ Every halt in this skill is recoverable. The halts are:
 | Step 7 required item missing | Pick "Fix with cps-init" to re-scaffold |
 | Step 8 `py_compile` failure | The runtime source is corrupted upstream — re-fetch from GitHub, rebundle, reinstall cps-setup itself |
 | Step 9 all source paths missing | Create at least one source directory, re-run cps-setup |
+| Step 10 install hang (>300s) | Cancel, `pip cache purge`, pre-warm `onnxruntime` + `hf-xet` wheels, re-run |
 | Step 10 import verification failure | Check pip output, clear pip cache if needed, re-run cps-setup |
 | Step 11a/11b/11c failure | Read the reported error — likely a runtime bug, file an issue in the CPS source-of-truth project |
 
