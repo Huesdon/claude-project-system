@@ -18,8 +18,8 @@ import os
 TASK_MODULE_REV = 2
 TOC_RULE_REV = 1
 CAPTURE_REV = 2
-CORE_SECTION_REV = 5
-FULL_SECTION_REV = 1
+CORE_SECTION_REV = 6
+FULL_SECTION_REV = 2
 
 # --------------------------------------------------------------------------
 # Embedded templates (triple-quoted = verbatim, no interpolation)
@@ -176,7 +176,7 @@ When Claude flags a candidate, it pauses, states it in one line, and asks "worth
 **After capture:** If significant enough that future sessions must not miss it, suggest adding a pointer to this CLAUDE.md — but do not edit without explicit user approval.
 """
 
-CORE_SECTION_BLOCK = """<!-- cps-core BEGIN rev: 5 -->
+CORE_SECTION_BLOCK = """<!-- cps-core BEGIN rev: 6 -->
 <!-- Managed by cps-init (cps_scaffold.py) — re-run cps-init to update. -->
 
 ## Delegation
@@ -206,14 +206,9 @@ Read the mapped file. Create it as an empty stub if missing.
 
 | Topic | File |
 |---|---|
-| CPS design / profiles / installer flow | `Reference/CPS_Design.md` |
-| Runtime Python file manifest | `Runtime/README.md` |
-| Phase changelog | `Reference/CPS_Phase_History.md` |
 | Task module spec | `Reference/Claude/CPS_Task_Module.md` |
 | Capture taxonomy spec | `Reference/Claude/CPS_Capture_Taxonomy.md` |
 | TOC rule spec | `Reference/Claude/CPS_TOC_Rule.md` |
-| Deployment checklist | `Reference/CPS_Deployment_Checklist.md` |
-| Skills inventory | `Reference/Skill_Inventory.md` |
 
 ---
 
@@ -250,8 +245,8 @@ Route captures into five buckets under `Reference/`: Patterns, Decisions, Lesson
 <!-- cps-core END -->
 """
 
-FULL_SECTION_BLOCK = """<!-- cps-full BEGIN rev: 1 -->
-<!-- Managed by cps-scaffold.ps1 — do not edit between BEGIN/END markers; re-run the script to update. -->
+FULL_SECTION_BLOCK = """<!-- cps-full BEGIN rev: 2 -->
+<!-- Managed by cps-init (cps_scaffold.py) — do not edit between BEGIN/END markers; re-run cps-init to update. -->
 
 ## CPS Server Protocol
 
@@ -267,6 +262,19 @@ Available whenever `.cps/cps_server.py` exists in the project root.
 """
 
 # --------------------------------------------------------------------------
+# Legacy artifacts pruned on every cps-init run (idempotent migration)
+# --------------------------------------------------------------------------
+LEGACY_ARTIFACTS = [
+    # Pre-rev-5 layout: canonical docs lived at Reference root before being
+    # moved into Reference/Claude/. Old copies left behind on upgrade.
+    "Reference/CPS_Capture_Taxonomy.md",
+    "Reference/CPS_TOC_Rule.md",
+    "Reference/CPS_Task_Module.md",
+    # Phase 8.8 retired the patcher entirely.
+    "Reference/Claude/cps_patch_manifest.json",
+]
+
+# --------------------------------------------------------------------------
 # Globals
 # --------------------------------------------------------------------------
 
@@ -276,6 +284,18 @@ outcomes: List[Dict[str, str]] = []
 def add_outcome(action: str, target: str) -> None:
     """Record an outcome (action + target)."""
     outcomes.append({"action": action, "target": target})
+
+
+def prune_legacy_artifacts(target_path: Path) -> None:
+    """Delete legacy files left behind by previous scaffold revs. Idempotent."""
+    for rel in LEGACY_ARTIFACTS:
+        p = target_path / rel
+        if p.exists() and p.is_file():
+            try:
+                p.unlink()
+                add_outcome("PRUNED-legacy", str(p))
+            except OSError as e:
+                add_outcome(f"PRUNE-FAILED ({e})", str(p))
 
 
 def ensure_directory(path: Path) -> bool:
@@ -473,6 +493,11 @@ def main() -> int:
     target_path = target_path.resolve()
 
     # --------------------------------------------------------------------------
+    # Step 0: prune legacy artifacts (idempotent migration from older revs)
+    # --------------------------------------------------------------------------
+    prune_legacy_artifacts(target_path)
+
+    # --------------------------------------------------------------------------
     # Step 1: directories
     # --------------------------------------------------------------------------
 
@@ -592,12 +617,14 @@ def main() -> int:
         or o["action"].startswith("APPENDED")
         or o["action"].startswith("FORCED")
     )
+    pruned_count = sum(1 for o in outcomes if o["action"].startswith("PRUNED"))
     skipped_count = sum(1 for o in outcomes if o["action"].startswith("SKIPPED"))
 
     print()
     print(
         f"Summary: {created_count} created, {repaired_count} repaired, "
-        f"{upgraded_count} upgraded/appended, {skipped_count} skipped."
+        f"{upgraded_count} upgraded/appended, {pruned_count} pruned, "
+        f"{skipped_count} skipped."
     )
     print()
     print(f"Done. Profile: {profile_name}")
