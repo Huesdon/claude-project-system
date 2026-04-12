@@ -12,8 +12,16 @@ description: >
   full", "add project brain", "set up knowledge base".
 ---
 
-# cps-setup — CPS Installer (rev 12)
+# cps-setup — CPS Installer (rev 13)
 
+> **Rev 13 (2026-04-11):** Step 3 write-access probe hardened — locked filename
+> to `.cps_preflight`, mandatory `try/finally` with `unlink(missing_ok=True)`,
+> explicit "no improvisation" wording. New Step 12a stray-probe sweep removes
+> any leftover `.cps_preflight` / `.cps_writetest` / `.cps_check` files at
+> project root before printing the summary. Trigger: a Full install at
+> H:\Claude Cowork\Projects\MSB left a `.cps_writetest` stray because Claude
+> improvised the probe filename and skipped cleanup.
+>
 > **Rev 12 (2026-04-11):** Step 1 pillar-check now probes both the Cowork
 > global path (`/mnt/.claude/skills/<name>/SKILL.md` or `.skill`) and the host
 > global path (`~/.claude/skills/<name>/SKILL.md` or `.skill`), passing if the
@@ -162,8 +170,22 @@ Store as `profile ∈ {core, full, upgrade_core_to_full}`.
 
 1. `python3 --version` → must be ≥ 3.10. Halt with install instructions if
    lower or missing.
-2. Test write access: `Path(project_root / ".cps_preflight").touch()` then
-   `unlink()`. Halt on `PermissionError`.
+2. Test write access — **use this exact pattern, no improvisation**:
+
+   ```python
+   from pathlib import Path
+   probe = project_root / ".cps_preflight"
+   try:
+       probe.touch()
+   except PermissionError:
+       halt("write access denied at project_root")
+   finally:
+       probe.unlink(missing_ok=True)
+   ```
+
+   Filename is locked to `.cps_preflight`. Do not invent alternates
+   (`.cps_writetest`, `.cps_check`, etc.). The `finally` clause is mandatory
+   so a halt-on-touch still cleans up if the touch ever partially succeeds.
 3. Test `pip` availability: `pip --version`. Halt if missing.
 
 Report results inline and proceed only if all three pass.
@@ -489,7 +511,25 @@ On `profile == upgrade_runtime`, 11a is still run so the test suite exercises
 the ingest pipeline end-to-end against the redeployed runtime. This is the
 only way to verify the self-hosting `sync_runtime_to_cps()` hook is working.
 
-## Step 12 — Summary
+## Step 12 — Stray-probe sweep + summary
+
+### 12a — Stray-probe sweep
+
+Scan `project_root` for any leftover preflight probe files and remove them.
+Catches the case where a previous run (this skill or any earlier rev) created
+a probe and never cleaned it up.
+
+```python
+for stray in project_root.glob(".cps_*"):
+    if stray.is_file() and stray.name in {".cps_preflight", ".cps_writetest", ".cps_check"}:
+        stray.unlink()
+```
+
+Do not glob-delete `.cps_*` indiscriminately — `.cps/` is the runtime directory
+and must be preserved. The allowlist above is exhaustive: extend it if a future
+rev adds another probe filename.
+
+### 12b — Summary
 
 Print a single compact report. Profile-aware. Example for a clean Full install:
 
