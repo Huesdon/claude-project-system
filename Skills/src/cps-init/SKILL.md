@@ -1,15 +1,14 @@
 ---
 name: cps-init
-description: Internal CPS scaffolder invoked by cps-setup Step 5 and Step 7 repair, and run standalone only for scaffold-rev propagation when cps_scaffold.py bumps a rev marker. Creates the Reference/ tree, canonical reference docs, and CLAUDE.md §9/§11/§12 pointer sections in a target Cowork project via cps_scaffold.py fetched from GitHub main at runtime. Idempotent — safe to re-run. Not a user-facing entry point; users run cps-setup instead. Triggers on "cps-init" only.
+description: Internal CPS scaffolder. Invoked by cps-setup Step 5/7 and run standalone only for scaffold-rev propagation. Fetches cps_scaffold.py from GitHub main at runtime; writes Reference/ tree, canonical docs, and CLAUDE.md §9/§11/§12 pointer sections. Idempotent. Not user-facing — run cps-setup instead. Trigger: "cps-init".
 ---
 
-# cps-init — CPS Scaffolder (rev 4)
+# cps-init — CPS Scaffolder (rev 5)
 
-> **Rev 4 (2026-04-11):** Front-door demotion. cps-init is now an internal scaffolder, not a user-facing entry point. User-facing trigger phrases ("scaffold cps", "initialize cps project", "set up cps reference folders", "create cps scaffold") removed from the description; only the literal `cps-init` programmatic name remains so `cps-setup` Step 5 / Step 7 and the §0b routing-table rev-propagation flow can still invoke it. New users always run `cps-setup`. Skill_Inventory row moved under an Internal subsection. No procedural step changes — Step 1 idempotency check, Step 4 GitHub fetch, Step 5 execution, and the contract-for-callers section are unchanged. Decision context: this conversation's cps-init demotion thread.
->
-> **Rev 3 (2026-04-10):** No longer bundles `cps_scaffold.py`. Fetches it from `raw.githubusercontent.com/Huesdon/cowork-project-system/main/Reference/cps_scaffold.py` at runtime. Removes the "rebundle cps-init.skill on scaffold edit" house rule — scaffold edits now propagate via `git push` to main. Previous rev bundled a 600-line copy of the scaffolder that required rebundling on every edit.
->
-> **Rev 2 (2026-04-10):** Rewrote as a real scaffolder. Bundled `cps_scaffold.py` (Python port of `cps-scaffold.ps1`) which Claude invoked via Bash.
+> **Rev 5 (2026-04-11):** Description tightened to 318 chars (was 463). Rev block trimmed. No procedural changes.
+> **Rev 4 (2026-04-11):** Front-door demotion — user-facing trigger phrases stripped; only `cps-init` programmatic name remains. cps-setup Step 5/7 and §0b rev-propagation are the only callers. No procedural step changes.
+> **Rev 3 (2026-04-10):** No longer bundles `cps_scaffold.py` — fetches from `raw.githubusercontent.com/Huesdon/cowork-project-system/main/Reference/cps_scaffold.py` at runtime.
+> **Rev 2 (2026-04-10):** Rewrote as a real scaffolder. Bundled `cps_scaffold.py` (Python port of `cps-scaffold.ps1`).
 
 ## What this skill does
 
