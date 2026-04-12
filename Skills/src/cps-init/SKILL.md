@@ -1,11 +1,13 @@
 ---
 name: cps-init
-description: Canonical CPS scaffolder. Creates the Reference/ tree, canonical reference docs, CLAUDE.md §9/§11/§12 pointer sections, and (optionally) the Full profile block in a target Cowork project via cps_scaffold.py fetched from GitHub main at runtime. Idempotent — safe to re-run. Triggers on "cps-init", "scaffold cps", "initialize cps project", "set up cps reference folders", "create cps scaffold".
+description: Internal CPS scaffolder invoked by cps-setup Step 5 and Step 7 repair, and run standalone only for scaffold-rev propagation when cps_scaffold.py bumps a rev marker. Creates the Reference/ tree, canonical reference docs, and CLAUDE.md §9/§11/§12 pointer sections in a target Cowork project via cps_scaffold.py fetched from GitHub main at runtime. Idempotent — safe to re-run. Not a user-facing entry point; users run cps-setup instead. Triggers on "cps-init" only.
 ---
 
-# cps-init — CPS Scaffolder (rev 3)
+# cps-init — CPS Scaffolder (rev 4)
 
-> **Rev 3 (2026-04-10):** No longer bundles `cps_scaffold.py`. Fetches it from `raw.githubusercontent.com/Huesdon/claude-project-system/main/Reference/cps_scaffold.py` at runtime, same pattern as `cps-patcher`'s catalog fetch. Removes the "rebundle cps-init.skill on scaffold edit" house rule — scaffold edits now propagate via `git push` to main. Previous rev bundled a 600-line copy of the scaffolder that required rebundling on every edit.
+> **Rev 4 (2026-04-11):** Front-door demotion. cps-init is now an internal scaffolder, not a user-facing entry point. User-facing trigger phrases ("scaffold cps", "initialize cps project", "set up cps reference folders", "create cps scaffold") removed from the description; only the literal `cps-init` programmatic name remains so `cps-setup` Step 5 / Step 7 and the §0b routing-table rev-propagation flow can still invoke it. New users always run `cps-setup`. Skill_Inventory row moved under an Internal subsection. No procedural step changes — Step 1 idempotency check, Step 4 GitHub fetch, Step 5 execution, and the contract-for-callers section are unchanged. Decision context: this conversation's cps-init demotion thread.
+>
+> **Rev 3 (2026-04-10):** No longer bundles `cps_scaffold.py`. Fetches it from `raw.githubusercontent.com/Huesdon/cowork-project-system/main/Reference/cps_scaffold.py` at runtime. Removes the "rebundle cps-init.skill on scaffold edit" house rule — scaffold edits now propagate via `git push` to main. Previous rev bundled a 600-line copy of the scaffolder that required rebundling on every edit.
 >
 > **Rev 2 (2026-04-10):** Rewrote as a real scaffolder. Bundled `cps_scaffold.py` (Python port of `cps-scaffold.ps1`) which Claude invoked via Bash.
 
@@ -28,10 +30,8 @@ Everything is idempotent. Re-runs skip existing files with matching rev markers,
 This skill bundles **only `SKILL.md`**. The scaffolder is fetched at runtime from:
 
 ```
-https://raw.githubusercontent.com/Huesdon/claude-project-system/main/Reference/cps_scaffold.py
+https://raw.githubusercontent.com/Huesdon/cowork-project-system/main/Reference/cps_scaffold.py
 ```
-
-The `.ps1`/`.cmd` Windows standalone fallbacks are no longer bundled. Users who want to scaffold manually outside of Cowork can download them directly from the GitHub repo at the same path.
 
 ## Procedure
 
@@ -62,7 +62,7 @@ Create a temp directory and fetch `cps_scaffold.py` via `curl` (bytes are preser
 
 ```bash
 TMPDIR=$(mktemp -d -t cps-init-XXXXXX)
-curl -fsSL "https://raw.githubusercontent.com/Huesdon/claude-project-system/main/Reference/cps_scaffold.py" -o "$TMPDIR/cps_scaffold.py"
+curl -fsSL "https://raw.githubusercontent.com/Huesdon/cowork-project-system/main/Reference/cps_scaffold.py" -o "$TMPDIR/cps_scaffold.py"
 ```
 
 **Sanity checks (mandatory) — abort if any fail:**
@@ -73,7 +73,7 @@ curl -fsSL "https://raw.githubusercontent.com/Huesdon/claude-project-system/main
 4. Contains `def main() -> int` (the entrypoint).
 5. Size is at least 10,000 bytes (catches truncated fetches — the real file is ~24KB).
 
-If any check fails, halt with: *"ERROR: fetched cps_scaffold.py failed sanity check — aborting to prevent scaffolding from a corrupted or truncated file. Check network connectivity and the GitHub source at `https://github.com/Huesdon/claude-project-system/blob/main/Reference/cps_scaffold.py`.*
+If any check fails, halt with: *"ERROR: fetched cps_scaffold.py failed sanity check — aborting to prevent scaffolding from a corrupted or truncated file. Check network connectivity and the GitHub source at `https://github.com/Huesdon/cowork-project-system/blob/main/Reference/cps_scaffold.py`."*
 
 Sample combined check (bash):
 
@@ -117,7 +117,6 @@ If the scaffolder exited non-zero, surface the error and halt. Do NOT attempt to
 - Do not reimplement scaffolding inline via Write/Edit tool calls or bash file writes. `cps_scaffold.py` fetched from GitHub main is the single source of truth.
 - Do not fall back to a cached or local copy if the fetch fails. Halt and surface the error — silent fallback would mask GitHub drift and defeat the purpose of runtime fetching.
 - Do not edit or save the fetched `cps_scaffold.py` back anywhere. It lives in `$TMPDIR` for the duration of this invocation and is discarded afterward. Canonical edits happen in the CPS source-of-truth project at `Reference/cps_scaffold.py` followed by `git push`.
-- Do not tell users to download or double-click the Windows `.cmd`/`.ps1` files. Those are manual-fallback convenience artifacts on GitHub for users outside Cowork, not part of this skill's flow.
 
 ## Contract for programmatic callers (e.g. `cps-setup` Step 6)
 
