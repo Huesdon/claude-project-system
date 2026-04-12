@@ -1,19 +1,16 @@
 ---
 name: task
 description: >
-  Universal project task backlog manager for any Claude Cowork project. Maintains a
-  single source of truth at Reference/Claude/tasks.json containing every tier (T1,
-  T2, T3, Roadmap) in one file — no separate backlog. On first run, creates the file
-  and writes the standard Task Module section into the project CLAUDE.md. After
-  init, manages the backlog: add tasks, mark complete with log, reprioritize,
-  review, health, and get session recommendations. When T1/T2 is empty, surfaces
-  Roadmap items to promote, or Ideas to promote to Roadmap. Every prompt uses
-  AskUserQuestion; task pickers use numbered buttons (1/2/3) so long titles never
-  break rendering. Invoke when the user says: "add a task", "log this as a task",
-  "what should I work on", "reprioritize the backlog", "mark that done", "task
-  backlog", "show me open tasks", "task status", "run task", or opens a new
-  project and wants structured task tracking. Works standalone in any Cowork
-  project.
+  Project task backlog manager for Claude Cowork. Single source of truth at
+  Reference/Claude/tasks.json holds every tier (T1, T2, T3, Roadmap). First run
+  creates the file and writes the Task Module section into CLAUDE.md. Manages
+  add, complete, reprioritize, review, health, recommend across all tiers in
+  file order. EMPTY-STATE FLOW promotes Roadmap items to tasks, or Ideas to
+  Roadmap, when tasks.json is empty or fully blocked. Every prompt uses
+  AskUserQuestion; pickers use numbered buttons so long titles render. Invoke
+  on "add a task", "log this as a task", "what should I work on", "reprioritize
+  the backlog", "mark that done", "task backlog", "show me open tasks", "task
+  status", "run task", or any new project needing structured task tracking.
 ---
 
 # task — Project Task Backlog Manager
@@ -26,25 +23,37 @@ Completed tasks are removed from `tasks.json` and appended to the log.
 
 ---
 
-## Response Button Rule (MANDATORY)
+## Question Route Map
 
-**Every question without exception uses `AskUserQuestion`.** No question is ever asked in prose. A response that ends with a question in plain text is a violation of this rule.
+Every question to the user routes through `AskUserQuestion`. Match the response condition to a row; the routing is mandatory. This route map is canonical for the project — project CLAUDE.md §0a and the memory feedback file point here. Deep reference (failure-mode catalog, worked replacements, edge cases): `Reference/Patterns/2026-04-11-question-button-routing.md`.
 
-### Task-picker flows — Numbered button pattern
+| Condition | Use |
+|---|---|
+| Picking from a list of items | `AskUserQuestion`, numbered button labels (`1`/`2`/`3`/`Show all`), full title in option description |
+| Permission gate (file create / modify / delete, destructive op) | `AskUserQuestion`, two options: action verb (e.g., `Approve write`) and `Reject` |
+| Binary yes/no on a clear proposition | `AskUserQuestion`, two labeled options stating both outcomes |
+| Multi-choice between approaches or scopes | `AskUserQuestion`, one option per approach (2–4 options) |
+| Forward-looking next-action ("ready to / want me to / should I / shall I / let me know / just say / happy to") | `AskUserQuestion`, one option per concrete next action — never `Yes / No proceed` |
+| Clarifying ambiguity in the user's request | `AskUserQuestion`, one option per candidate interpretation |
+| Citing a fact or framing rhetorically (no answer expected) | Prose (not a question; no `?`) |
 
-When the user is picking from a list of tasks, roadmap items, or ideas (anything with long titles), use the **numbered pattern**:
+The **Forward-looking next-action** row is the failure-mode anchor. The recurring miss is the closing prose tail — *"Done. Ready to draft X?"* / *"Want me to also update Y?"* — written as plain text instead of buttons. Any final sentence that matches that row routes to `AskUserQuestion`. No exceptions.
 
-1. Present the list as a short numbered prose block above the buttons:
+Test: after sending, does the user have a decision to make before work continues? Yes → `AskUserQuestion`. No → prose.
+
+### Task-picker numbered button pattern
+
+When picking from lists with long titles, use the numbered pattern:
+
+1. Print numbered prose block:
    ```
    1. Grep for stale 'double-click the cmd' references — T3
-   2. Remove residual Windows-only language from cps-init SKILL.md — T3
+   2. Remove Windows-only language from cps-init SKILL.md — T3
    3. Update cps-setup SKILL.md Step 6 wording — T3
    ```
-2. Present `AskUserQuestion` with button **labels** as single characters: `1`, `2`, `3`, plus a fourth option like `Show all`. The long title goes in the option **description** field, not the label.
+2. Present `AskUserQuestion` with labels `1`, `2`, `3`, etc. plus `Show all`. Full title goes in the description field.
 
-This keeps buttons short and guarantees rendering even when titles are long.
-
-**Binary and worded-option flows stay worded.** Short-option flows (tier picker: `T1` / `T2` / `T3` / `Roadmap`, Patch gate Yes/Not-yet, Impact scan multi-select) use their natural labels — the numbered pattern is only for picking from a list of items with long names.
+Button labels stay short. Tier/gate flows (`T1`/`T2`/`T3`/`Roadmap`, Yes/Not-yet) use natural wording — the numbered pattern is only for item lists.
 
 ---
 
@@ -58,7 +67,12 @@ This keeps buttons short and guarantees rendering even when titles are long.
     "completions_since_reprioritization": 0,
     "reprioritize_threshold": 5,
     "last_reprioritized": "YYYY-MM-DD",
-    "reprioritization_strategy": "dependency-first"
+    "reprioritization_strategy": "dependency-first",
+    "flow_metrics": {
+      "completions": [],
+      "summary_interval": 5,
+      "last_summary_at": 0
+    }
   },
   "tasks": [
     {
@@ -69,28 +83,129 @@ This keeps buttons short and guarantees rendering even when titles are long.
       "description": "One sentence, 80-120 chars max.",
       "depends_on": ["Title of dependency task"],
       "unblocks": ["Title of task this unblocks"],
-      "requires_patch": true
+      "started_at": "YYYY-MM-DD | null",
+      "complexity": "1 | 2 | 3"
     }
   ]
 }
 ```
 
+**`flow_metrics.completions[]` schema:**
+```json
+{
+  "id": "task-id",
+  "tier": "T1",
+  "constraint_alignment": "exploits",
+  "started": "YYYY-MM-DD",
+  "completed": "YYYY-MM-DD",
+  "cycle_time_days": 0,
+  "captures_emitted": 0,
+  "complexity": 1
+}
+```
+
+**Cap:** Keep most recent 50 records. Drop oldest on overflow.
+**`started_at`:** Written when task status → `in_progress`. Null for tasks predating this schema.
+
 **Tier conventions:** T1 = architectural/high design impact, T2 = subsystem, T3 = docs/polish, Roadmap = future.
 **Status values:** `pending`, `in_progress`, `blocked`.
 **Single-file rule:** Every tier lives in `tasks.json`. Order is maintained by REPRIORITIZE (T1 before T2 before T3 before Roadmap, dependencies before dependents within each tier). There is no `tasks_backlog.json`.
-**Description rule:** One sentence, 80-120 chars. No implementation details, no doc references. WHAT not HOW.
-**`requires_patch`:** Optional. Set `true` if the task modifies scaffold templates that downstream projects depend on — triggers a patch-catalog gate on COMPLETE.
-**`completions_since_reprioritization`:** Still incremented on every COMPLETE for HEALTH visibility, but COMPLETE no longer auto-prompts when it crosses the threshold. Invoke REPRIORITIZE manually when you want it.
+**Description rule:** One sentence, 80–120 chars. WHAT not HOW.
+**`completions_since_reprioritization`:** Incremented on COMPLETE for HEALTH visibility only. COMPLETE does not auto-prompt REPRIORITIZE.
 
 ---
 
 ## Token Discipline
 
-**Hard cap: 15 tasks max loaded per operation.** If `tasks.json` exceeds 15 tasks, RECOMMEND reads only the first 15 (they are already priority-sorted). REPRIORITIZE, REVIEW, and HEALTH read the full file unconditionally.
+**Hard cap: 15 tasks max loaded per operation.** RECOMMEND reads first 15 only (priority-sorted); REPRIORITIZE/REVIEW/HEALTH read full file.
 
-- Read the file once per operation, parse only the fields needed.
-- For ADD / COMPLETE / RECOMMEND: read the file, make the change in memory, write back in one shot.
-- Never re-read a file already loaded in the current turn.
+- Read once per operation, parse only needed fields.
+- For ADD/COMPLETE/RECOMMEND: read → change in memory → write once.
+- Never re-read already-loaded files.
+
+---
+
+## Log Access Routing
+
+`Reference/Claude/tasks_completed.log` grows unbounded. Use the row that matches the operation; the absence of a "Read full log" row is intentional.
+
+| Operation | Use |
+|---|---|
+| Append a completion line | `python -c "open('Reference/Claude/tasks_completed.log','a').write('YYYY-MM-DD \| id \| Title\n')"` (creates file on first call) |
+| Get line count | `wc -l Reference/Claude/tasks_completed.log` |
+| Get most recent completion date | `tail -1 Reference/Claude/tasks_completed.log \| cut -d'\|' -f1` |
+| Strip log line on Reopen | `sed -i '$d' Reference/Claude/tasks_completed.log` (only valid for the line appended in the current turn) |
+
+Reference: `Reference/Patterns/2026-04-11-positive-routing-tables.md`.
+
+---
+
+## Capture Batching (Rule 2 + Rule 3)
+
+Mid-task capture candidates are batched in session scratch and surfaced once at COMPLETE. This collapses N self-trigger gates into 1 multi-select prompt.
+
+### Session scratch file
+
+Path: `capture_candidates.json` in the session working directory (e.g., `/sessions/<id>/capture_candidates.json`). Ephemeral — dies with session.
+
+Schema:
+```json
+[
+  {
+    "summary": "One-line capture candidate description",
+    "bucket_hint": "Pattern | Decision | Lesson | Idea | Roadmap | Documentation",
+    "context": "Brief context (2-3 sentences max) preserving the *why*"
+  }
+]
+```
+
+### Append operation
+
+When Claude identifies a capture candidate mid-task (self-trigger gate passes in `cps-capture`), append to `capture_candidates.json` instead of prompting. Print one silent confirmation line:
+
+> *Batched capture candidate: "[summary]" ([bucket_hint])*
+
+No `AskUserQuestion`. No `cps-capture` invocation. The file is read-then-written (create if absent, append to array if present).
+
+### Flush operation (COMPLETE Step 2.5)
+
+Read `capture_candidates.json`. If empty or absent → skip. If non-empty:
+
+1. Print numbered list of candidates:
+   ```
+   Batched captures from this task:
+   1. [summary] — [bucket_hint]
+   2. [summary] — [bucket_hint]
+   ```
+
+2. Present `AskUserQuestion` (multi-select). Options:
+   - If ≤3 candidates: one option per candidate (label = number, description = summary + bucket).
+   - If 4+ candidates: top 3 by array order + **"Select all"** (description = "Capture all N candidates").
+   - Always include **"Skip all"** (description = "Discard batched candidates").
+
+3. For each selected candidate: invoke `cps-capture` with the summary and bucket_hint as context. Run sequentially (each capture is a full cps-capture flow).
+
+4. Delete `capture_candidates.json` after processing (whether captures ran or were skipped).
+
+---
+
+## Auto-Sort (silent REPRIORITIZE)
+
+Fires automatically after COMPLETE Step 2 and after ADD write. No gate, no print, no user prompt.
+
+**Logic:** Sort `tasks` array by tier (T1 → T2 → T3 → Roadmap), then topologically by `depends_on` within each tier, then by constraint alignment (`elevates` > `exploits` > `subordinates` > unset) at the same dependency level. Same algorithm as REPRIORITIZE Step 1.
+
+**Triggers:**
+
+| Signal | When it fires |
+|---|---|
+| COMPLETE Step 2 | After counter increment, before capture batch gate |
+| ADD | After append + write |
+| REFRAME | After `current_constraint` changes in meta |
+
+**Write:** Rewrite `tasks.json` with sorted array in-place. Do not update `meta.last_reprioritized` or reset counter (those are manual REPRIORITIZE only).
+
+**Manual REPRIORITIZE** remains available for alternate strategies (tier-only, manual reorder) and for explicit user-requested reorders.
 
 ---
 
@@ -146,13 +261,15 @@ Preserve any project-specific section number prefix if the existing section had 
 
 ### Session Start — RECOMMEND Flow
 
-At session start, read `Reference/Claude/tasks.json` and surface the top 1–3 actionable T1/T2 tasks via `AskUserQuestion` before any other work begins. Trust the existing order: REPRIORITIZE produces a dependency-aware ranking, so the top of the file is already the right answer. Wait for user confirmation before starting.
+At session start, read `Reference/Claude/tasks.json` and surface the top 1–3 actionable tasks (any tier) via `AskUserQuestion` before any other work begins. Trust the existing order: REPRIORITIZE produces a dependency-aware ranking across every tier, so the top of the file is already the right answer regardless of tier. Wait for user confirmation before starting.
 
 **Button rendering rule:** Task-picker flows use a numbered prose list plus number-only button labels (`1` / `2` / `3` / `Show all`) so long titles never break rendering. The full title appears in the option description, not the button label.
 
-**Before surfacing tasks:** Check for in-progress tasks from last session (Step 2a) and for invalid `"completed"` status values (Step 2b). Resolve both before picking new work.
+**WIP cap = 1:** At most one task may be `in_progress` at any time. Check for in-progress tasks (Step 2a) before surfacing new picks. Options: mark complete, keep working, or park and switch. RECOMMEND refuses to admit a second task while one is active.
 
-**Empty state:** If there are no actionable T1/T2 tasks (all complete, all blocked, or none of that tier exist), run the EMPTY-STATE FLOW to surface Roadmap items to promote to tasks, or Ideas to promote to the Roadmap.
+**Before surfacing tasks:** Check for in-progress tasks (Step 2a) and for invalid `"completed"` status values (Step 2b). Resolve both before picking new work.
+
+**Empty state:** If there are no actionable tasks at any tier (file empty or every task blocked), run the EMPTY-STATE FLOW to surface Roadmap items to promote to tasks, or Ideas to promote to the Roadmap.
 
 **Cross-session signal:** When the user selects a task, immediately write `status: "in_progress"` for that task before starting work. This is what Step 2a detects next session.
 
@@ -160,13 +277,13 @@ At session start, read `Reference/Claude/tasks.json` and surface the top 1–3 a
 
 When a task is fully done — all steps finished, files written, docs propagated — call `task COMPLETE` immediately. Do **not** wait for session close or explicit user instruction. COMPLETE is write-first: the task is removed from `tasks.json` and a line is appended to `tasks_completed.log` **before** any prompt appears. Never leave a finished task in `pending` or `in_progress` between work items — `tasks.json` must stay in sync with reality at all times.
 
+### Capture Batching at COMPLETE (Rule 2 + Rule 3)
+
+Mid-task capture candidates are batched in session scratch (`capture_candidates.json`) and surfaced as one multi-select `AskUserQuestion` at COMPLETE, after the task is committed closed. This collapses N self-trigger gates into 1 prompt. User-invoked captures ("capture this") bypass batching and run immediately. See the `cps-capture` skill for batch-mode routing.
+
 ### Terminal Menu (post-close action picker)
 
 After the write, COMPLETE always issues a single `AskUserQuestion` terminal menu with up to 4 options: **Next: [unblocked dependent]** · **Next: [second slot]** · **Close session** · **Reopen [Title]**. The menu is a post-close action picker, not a gate to closure — the task is already committed closed when the menu appears. Picking **Next:** sets that task's `status` to `in_progress`. Picking **Close session** is the clean exit (no further writes). Picking **Reopen** is an explicit revert: it restores the task to `in_progress`, strips the completion log line, and decrements the counter. Single-focus invariant: the menu promotes at most one task.
-
-### Patch Gate (if `requires_patch: true`)
-
-Tasks that modify scaffold templates downstream projects depend on must be flagged with `"requires_patch": true`. When present, a blocking patch gate runs **before** the terminal menu: *"This task touched scaffold templates — did you update the patch catalog and rebundle?"* with options **"Yes, done"** / **"Not yet — reopen the task"**. If not yet, the task is restored to `in_progress`, the log line is removed, the counter is decremented, and the terminal menu is skipped.
 
 ### Reprioritization
 
@@ -183,7 +300,7 @@ After any design decision or architectural change, update all relevant `Referenc
 If the project uses CPS (Claude Project System), CPS indexes these docs; stale docs mean stale query results. **After doc updates, run `cps-refresh` to re-index changed files before session close.**
 ```
 
-Confirm: "Task backlog initialized. Standard Task Module section written to CLAUDE.md. Ready to add your first task."
+Surface: "Backlog initialized. Task Module section written to CLAUDE.md."
 
 ---
 
@@ -193,172 +310,209 @@ Confirm: "Task backlog initialized. Standard Task Module section written to CLAU
 
 1. Read `Reference/Claude/tasks.json` only. Parse tasks array. If more than 15 tasks, truncate to first 15 (they are priority-sorted).
 
-### Step 2a — In-progress check (runs before surfacing any pending work)
+### Step 1b — Constraint line (Rule 6)
 
-If any task has `"status": "in_progress"`, pause and ask first via `AskUserQuestion`:
+Print one line before any picks or checks:
 
-- **"Yes, mark complete"** — run COMPLETE for that task (remove + log), then continue to step 3.
-- **"No, keep working on it"** — surface it as the sole recommendation (skip steps 3–6), then go to step 7.
+> *"Current constraint: [current_constraint] — top tasks aligned ↑"*
 
-Label the question: *"'[Title]' was in progress last session — was it completed?"*
+Read `current_constraint` from `tasks.json` meta. If absent, print: *"No constraint set — run constraint identification."* If `constraint_modifier` is present, append it in parentheses: *"Current constraint: attention (decision-bandwidth) — top tasks aligned ↑"*.
+
+This line is informational prose (no `AskUserQuestion`). It fires every session as the first visible output of RECOMMEND.
+
+### Step 1c — Flow summary (periodic)
+
+Check `flow_metrics.completions.length` vs `flow_metrics.last_summary_at`. If `completions.length - last_summary_at >= summary_interval`, print one summary line:
+
+> *"Flow (last N): avg cycle [X] days, [Y]% constraint-aligned (elevates+exploits)."*
+
+Compute from the most recent `summary_interval` entries. Update `last_summary_at` to current `completions.length`. One line only — do not expand into a table or detailed breakdown.
+
+### Step 2a — In-progress check (WIP cap = 1)
+
+If any task has `"status": "in_progress"`, ask via `AskUserQuestion`:
+
+- **"Mark complete"** — run COMPLETE (remove + log), continue to Step 3.
+- **"Keep working"** — surface as sole recommendation, skip to Step 5. No second task admitted.
+- **"Park and switch"** — set task `status` back to `"pending"`, write `tasks.json`, continue to Step 3 (pick new task). Parked task retains its file-order position.
+
+Label: *"'[Title]' is in progress — WIP cap is 1."*
+
+**WIP invariant:** At most one task may have `status: "in_progress"` at any time. RECOMMEND refuses to surface new picks while an in_progress task exists. The three options above are the only exits.
 
 ### Step 2b — Invalid status guard
 
-If any task has `"status": "completed"` (not a valid active-file status — tasks must be removed on completion, not status-flagged), treat it as a data error and ask via `AskUserQuestion`:
+If any task has `"status": "completed"` (invalid — must be removed on completion), ask via `AskUserQuestion`:
 
-- **"Remove and log it"** — run COMPLETE (removes from array, appends to log).
-- **"Reopen as pending"** — set `status: "pending"` and write back.
+- **"Remove and log it"** — run COMPLETE (remove + log).
+- **"Reopen as pending"** — set `status: "pending"` and write.
 
-Label the question: *"'[Title]' has status 'completed' but was never removed from tasks.json — fix it now?"*
+Label: *"'[Title]' has status 'completed' but was never removed from tasks.json — fix it now?"*
 
 ### Step 3 — Filter and pick
 
-3. Filter remaining: skip `blocked` tasks, skip T3 and Roadmap tiers (RECOMMEND only surfaces T1/T2).
-4. From remaining, select top 1-3 by position order (first = highest priority).
-5. For each candidate, extract only: `title`, `tier`, `status`.
+Filter remaining: skip `blocked`. RECOMMEND surfaces all tiers in file order (REPRIORITIZE owns ranking). Select top 1–3 by position. Extract: `title`, `tier`, `status` only.
 
 ### Step 4 — Present (numbered button pattern)
 
-6. Print the numbered list in prose, one line per candidate:
-   ```
-   1. [Title] — [tier]
-   2. [Title] — [tier]
-   3. [Title] — [tier]
-   ```
+Print numbered list:
+```
+1. [Title] — [tier]
+2. [Title] — [tier]
+3. [Title] — [tier]
+```
 
-   Then present `AskUserQuestion` with up to 4 options:
-   - Label `1` / description: full title
-   - Label `2` / description: full title
-   - Label `3` / description: full title
-   - Label `Show all` / description: "See every task in tasks.json including T3 and Roadmap"
-
-   Only include numbers that correspond to real candidates. If there are 2 tasks, only options `1`, `2`, and `Show all`.
+Present `AskUserQuestion` with up to 4 options. Label `1`/`2`/`3` with descriptions = full titles. Add `Show all` → "See every task in tasks.json across all tiers". Only include numbers that match real candidates.
 
 ### Step 5 — Mark in progress
 
-7. When the user selects a numbered task → immediately write `status: "in_progress"` for that task to `tasks.json` before starting any work. This creates the cross-session signal Step 2a detects next session.
+On selection → immediately write `status: "in_progress"` and `started_at: "[today]"` for that task to `tasks.json` before starting work (cross-session signal for Step 2a; `started_at` feeds flow metrics cycle_time).
 
-   If the user selects **"Show all"** → run REVIEW flow instead.
+On `Show all` → run REVIEW flow.
+
+### Step 5b — Plan buffer pre-stage (Rule 5)
+
+After marking in_progress, spawn a Haiku agent to pre-load prior art for the selected task. This runs before Sonnet enters plan mode.
+
+**Trigger:** Fires on every task start (Step 5 completes).
+
+**Mechanism:**
+
+1. Extract keywords from the task's `title` + `description` (strip stop words, keep nouns/verbs).
+2. Spawn Haiku agent with prompt: *"Run `cps-query` with query '[keywords]'. Return up to 10 hits as a markdown list: `- [doc title](path) — relevance snippet`. Write results to `/sessions/<id>/plan_buffer.md`."*
+3. If `.cps/cps_server.py` does not exist (CPS not installed), skip silently. Write empty `plan_buffer.md` with `*No CPS runtime — plan buffer skipped.*`
+
+**Fallback:** If Haiku agent fails or times out, proceed without plan_buffer.md. Sonnet falls through to manual `Reference/Patterns/_INDEX.md` + `Reference/Decisions/_INDEX.md` reads per §0b routing table.
+
+**Consumer:** When entering plan mode (any `ExitPlanMode` draft), read `plan_buffer.md` if present. Cite staged hits in the plan alongside pattern/decision index reads.
+
+**Format of `plan_buffer.md`:**
+```
+# Plan Buffer — [Task Title]
+Staged: [today]
+
+- [doc title](relative/path) — one-line relevance snippet
+- [doc title](relative/path) — one-line relevance snippet
+...
+```
+
+Cap: 10 hits max. Session-scoped (ephemeral).
 
 ### Empty state
 
-If step 4 yields 0 candidates (all blocked, or no T1/T2 tasks in the file at all) → run **EMPTY-STATE FLOW** instead of presenting an empty list.
+If Step 4 yields 0 candidates → run **EMPTY-STATE FLOW**.
 
-**Do NOT:** read full descriptions, load dependency chains, or enumerate T3/Roadmap during RECOMMEND. The goal is a fast, cheap pick-list.
+Fast pick-list only: do not read full descriptions or dependency chains.
 
 ---
 
 ## EMPTY-STATE FLOW
 
-Triggered when the T1/T2 backlog has no actionable tasks (empty, all blocked, or only T3/Roadmap entries exist). Surfaces the next logical work from the Roadmap → Ideas chain.
+Triggered when `tasks.json` is empty or every task is `blocked`. Surfaces Roadmap → Ideas chain.
 
 ### Step 1 — Check Roadmap
 
-Glob `Reference/Roadmap/*.md`. Exclude `_INDEX.md`.
+Glob `Reference/Roadmap/*.md` (exclude `_INDEX.md`).
 
 **If roadmap files exist:**
 
-1. Read `Reference/Roadmap/_INDEX.md` for the title list (format: `- [Title](filename.md) — hook`).
-2. Extract up to 3 titles (first 3 lines).
-3. Print numbered list in prose:
+1. Read `Reference/Roadmap/_INDEX.md` for titles (format: `- [Title](file.md) — hook`).
+2. Extract top 3 titles.
+3. Print numbered list:
    ```
    1. [Title 1] — [hook]
    2. [Title 2] — [hook]
    3. [Title 3] — [hook]
    ```
-4. Present `AskUserQuestion` with options labeled `1` / `2` / `3` / `Skip for now` (descriptions contain the full title and hook).
+4. Present `AskUserQuestion` with options `1`/`2`/`3`/`Skip for now`.
 
-   Label the question: *"T1/T2 backlog is empty. Your roadmap has N items — promote one to start work?"*
+   Label: *"tasks.json has no actionable work. Promote a roadmap item?"*
 
-5. If user picks `1` / `2` / `3` → run **PROMOTE FROM ROADMAP** with the corresponding title.
-6. If user picks `Skip for now` → end. Do not automatically surface Ideas.
+5. On number → run **PROMOTE FROM ROADMAP**.
+6. On `Skip for now` → end (do not auto-surface Ideas).
 
-**If no roadmap files → proceed to Step 2.**
+**If no roadmap files → Step 2.**
 
 ### Step 2 — Check Ideas
 
-Glob `Reference/Ideas/*.md`. Exclude `_INDEX.md`.
+Glob `Reference/Ideas/*.md` (exclude `_INDEX.md`).
 
 **If idea files exist:**
 
-1. Read `Reference/Ideas/_INDEX.md` for the title list.
-2. Extract up to 3 titles.
-3. Print numbered list in prose.
-4. Present `AskUserQuestion` with options labeled `1` / `2` / `3` / `Skip for now`.
+1. Read `Reference/Ideas/_INDEX.md` for titles.
+2. Extract top 3.
+3. Print numbered list.
+4. Present `AskUserQuestion` with options `1`/`2`/`3`/`Skip for now`.
 
-   Label the question: *"Roadmap is empty too. You have N ideas — promote one to the roadmap to get started?"*
+   Label: *"Roadmap empty. Promote an idea to the roadmap?"*
 
-5. If user picks a number → tell the user:
+5. On number → tell user:
 
-   > *"To promote '[title]' to the Roadmap, invoke the `cps-capture` skill and say 'promote [title] to roadmap'. Once it is on the roadmap, come back here and I will convert it to a task."*
+   > *"To promote '[title]' to Roadmap, run `cps-capture` and say 'promote [title] to roadmap'. Then come back here to convert it to a task."*
 
-6. If user picks `Skip for now` → end.
+6. On `Skip for now` → end.
 
-**If no idea files either:**
+**If no idea files:**
 
-Say: *"Backlog, roadmap, and ideas are all empty. Use `task ADD` to add a task directly, or `cps-capture` to save an idea or roadmap item."*
+Say: *"Backlog, roadmap, and ideas empty. Use `task ADD` to add directly, or `cps-capture` to save an idea/roadmap item."*
 
 ---
 
 ## PROMOTE FROM ROADMAP
 
-Triggered when the user selects a roadmap item to convert into an active T1/T2 task.
+Triggered when user selects a roadmap item to convert to active task.
 
 ### Step 1 — Locate the roadmap file
 
-Glob `Reference/Roadmap/*.md` (exclude `_INDEX.md`). Find the file whose name or content matches the selected title (fuzzy match on filename slug). Read it.
+Glob `Reference/Roadmap/*.md` (exclude `_INDEX.md`). Find file matching selected title (fuzzy slug). Read it.
 
-If not found: ask the user via `AskUserQuestion` to confirm the exact filename from a numbered list of candidates.
+If not found: ask user to confirm filename from numbered list.
 
 ### Step 2 — Extract task fields
 
-From the roadmap file, read:
-- **Title** — the `# Title` heading at the top of the file.
-- **Goal** — content of the `## Goal` section (one sentence). This becomes the default task description.
-- **Horizon** — `Now | Next | Later` from the frontmatter. Use as a tier hint: `Now` → T1, `Next` → T2, `Later` → T2.
+Read from roadmap file:
+- **Title** — `# Title` heading.
+- **Goal** — `## Goal` section (one sentence) → becomes task description.
+- **Horizon** — `Now | Next | Later` from frontmatter → tier hint: `Now` → T1, `Next`/`Later` → T2.
 
 ### Step 3 — Confirm task fields
 
-Present a single `AskUserQuestion` (this is a worded-options flow, not a numbered-picker flow):
+Present `AskUserQuestion` (worded options, not numbered):
 
-Options:
-- **"T1 — Architectural"** — promote as T1 with Goal as description
-- **"T2 — Subsystem"** — promote as T2 with Goal as description
-- **"Edit before adding"** — user will provide custom title and description in a follow-up turn
+- **"T1 — Architectural"** — promote as T1 with Goal as description.
+- **"T2 — Subsystem"** — promote as T2 with Goal as description.
+- **"Edit before adding"** — user provides custom title/description next.
 
-Label the question: *"Promoting '[title]' from Roadmap. Confirm tier?"* (Print the Goal sentence in prose above the buttons so the user can see what will become the description.)
+Label: *"Promoting '[title]' from Roadmap. Confirm tier?"* (Print Goal in prose above.)
 
-If `Edit before adding`: ask for title and description in a follow-up plain-text exchange (NOT an `AskUserQuestion` — free-text input is required).
+On `Edit before adding`: ask for title and description via free-text (NOT `AskUserQuestion`).
 
 ### Step 4 — Add the task
 
-Run the ADD flow with the confirmed fields:
-- `title` = roadmap file title
-- `tier` = T1 or T2 (from Step 3)
-- `description` = Goal sentence (trimmed to 80-120 chars; truncate if needed, never pad)
-- `depends_on` = [] (roadmap dependencies are narrative, not task-graph; do not carry over)
-- `status` = `pending`
+Run ADD flow with confirmed fields:
+- `title` = roadmap file title.
+- `tier` = T1 or T2 (from Step 3).
+- `description` = Goal sentence (trimmed to 80–120 chars).
+- `depends_on` = [] (narrative only, don't carry over).
+- `status` = `pending`.
 
-Write to `tasks.json` via the standard ADD logic.
+Write to `tasks.json` via ADD logic.
 
 ### Step 5 — Update the roadmap file status
 
-Edit the roadmap file: find the line `**Status:** Active` and replace with `**Status:** Promoted`.
+Edit roadmap file: replace `**Status:** Active` with `**Status:** Promoted`.
 
-If the project has CPS (`.cps/cps_server.py` exists), run a targeted ingest:
+If CPS present (`.cps/cps_server.py` exists), run:
 ```bash
 python .cps/cps_server.py ingest --files=<roadmap_file_path>
 ```
 
 ### Step 6 — Report and offer immediate start
 
-Single line report:
-```
-Promoted '[title]' from Roadmap → added as [tier] task in tasks.json. Roadmap entry marked Promoted.
-```
+Report: `Promoted '[title]' from Roadmap → added as [tier] task in tasks.json.`
 
-Then present via `AskUserQuestion`:
-- **"Yes, set to in_progress"** — update the task status in tasks.json to `in_progress`.
+Present `AskUserQuestion`:
+- **"Yes, set to in_progress"** — update task status to `in_progress`.
 - **"Leave as pending"** — no change.
 
 Label: *"Start working on it now?"*
@@ -367,158 +521,144 @@ Label: *"Start working on it now?"*
 
 ## ADD
 
-Extract what you can from context. Only ask for missing required fields — use `AskUserQuestion` for each gap.
+Extract from context. Ask only for missing required fields via `AskUserQuestion`.
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| title | Yes | Verb + noun ("Build login page") |
-| tier | Yes | T1 / T2 / T3 / Roadmap |
-| description | Yes | One sentence, 80-120 chars. |
-| depends_on | No | Array of task titles |
-| unblocks | No | Array of task titles |
-| requires_patch | No | Set `true` if task touches scaffold templates (triggers patch gate on COMPLETE) |
+| title | Yes | Verb + noun ("Build login page"). |
+| tier | Yes | T1 / T2 / T3 / Roadmap. |
+| description | Yes | One sentence, 80–120 chars. |
+| depends_on | No | Array of task titles. |
+| unblocks | No | Array of task titles. |
+| complexity | Yes | 1 = simple, 2 = moderate, 3 = complex. Infer from tier if obvious (T3 → 1, T1 → 2–3). |
 
-If `tier` is missing, present `AskUserQuestion` with options: **"T1 — Architectural"** / **"T2 — Subsystem"** / **"T3 — Docs/Polish"** / **"Roadmap — Future"**. (Short worded labels — no numbered pattern needed.)
+If tier missing: present `AskUserQuestion` with **"T1 — Architectural"** / **"T2 — Subsystem"** / **"T3 — Docs/Polish"** / **"Roadmap — Future"**.
 
-Generate `id` as `[tier-lowercase]-[slug]` (e.g. `t2-help-system`).
-Set `status` to `pending` unless context indicates otherwise.
+If complexity missing: present `AskUserQuestion` with **"1 — Simple"** / **"2 — Moderate"** / **"3 — Complex"**.
 
-Read `tasks.json` → parse → append new task object → write back.
-Update `meta.last_updated` and `meta.last_updated_note`.
+Generate `id` as `[tier]-[slug]` (e.g., `t2-help-system`). Set `status: "pending"`.
 
-**Insertion position:** New tasks are appended to the end of the `tasks` array. REPRIORITIZE is responsible for placing them in the correct position within the tier stack.
+Read `tasks.json` → parse → append → write. Update `meta.last_updated` and `meta.last_updated_note`.
+
+Append to end, then run **Auto-Sort** to place in optimal order (tier → dependency → constraint alignment).
 
 ---
 
 ## COMPLETE
 
-Write-first, terminal-menu. Happy-path is **1 prompt** (the terminal menu) with `requires_patch: false`. With `requires_patch: true`, add 1 blocking patch gate on top (2 prompts total). The terminal menu always runs — clicking "Next:" is the clean close.
+Write-first, terminal-menu. Happy path: 1 prompt (menu) with no batched captures. With batched captures: 1 multi-select + sequential cps-capture runs + menu. Menu always runs last.
 
-**Ordering principle:** All writes happen in Steps 1–2 before any prompt. The terminal menu is a post-close action picker, not a gate to closure. Reopen is a post-close **revert** action, not a confirmation gate.
+**Ordering:** All writes happen in Steps 1–2 before any prompt. Menu is post-close action picker. Reopen is post-close revert.
 
 ### Step 1 — Remove and log (MANDATORY)
 
-Read `tasks.json` → find task by title (case-insensitive substring match) → capture `id`, `title`, `tier`, `requires_patch`, `depends_on` → remove from the array → write back.
+Read `tasks.json` → find task by title (case-insensitive substring) → capture `id`, `title`, `tier`, `depends_on` → remove from array → write.
 
 Update `meta.last_updated` (today) and `meta.last_updated_note` (`"completed: [Title]"`).
 
-Append one line to `Reference/Claude/tasks_completed.log`:
-
-```
-YYYY-MM-DD | task-id | Task Title
-```
-
-Lazy-create the log file if missing — no header.
+Append a completion line via the **Append a completion line** row in **Log Access Routing**. Lazy-create is handled by the append mechanism.
 
 ### Step 2 — Counter increment (MANDATORY)
 
-Increment `meta.completions_since_reprioritization` by 1. Kept for HEALTH visibility only; COMPLETE does **not** auto-prompt to run REPRIORITIZE when it crosses the threshold. The user invokes REPRIORITIZE manually.
+Increment `meta.completions_since_reprioritization` by 1 (HEALTH visibility only).
 
-### Step 3 — Patch gate (blocking, only if `requires_patch: true`)
+### Step 2a — Auto-sort (MANDATORY)
 
-If the completed task had `"requires_patch": true`, present `AskUserQuestion`:
+Run **Auto-Sort** on the remaining tasks array. This ensures the terminal menu's "Next:" picks reflect optimal order after the completed task is removed.
 
-- **"Yes, done"** — proceed to Step 4.
-- **"Not yet — reopen the task"** — restore task to `in_progress` in `tasks.json`, remove the completion log line just appended, decrement `meta.completions_since_reprioritization` by 1, and stop. **Do not run Step 5.**
+### Step 2b — Record flow metric (MANDATORY)
 
-Label: *"This task touched scaffold templates — did you update the patch catalog and rebundle?"*
+Append a record to `meta.flow_metrics.completions[]`:
 
-If `requires_patch` is absent or false, skip this step entirely.
+- `id`: task id (captured in Step 1)
+- `tier`: task tier
+- `constraint_alignment`: task's alignment value (or `null`)
+- `started`: task's `started_at` value (or `null` if predates schema)
+- `completed`: today's date
+- `cycle_time_days`: integer diff between `started` and `completed` (or `null`)
+- `captures_emitted`: length of `capture_candidates.json` array (0 if absent)
+- `complexity`: task's `complexity` value (or `null` if predates schema)
 
-### Step 4 — Silent scans
+If `completions.length > 50`, drop the oldest entry before appending.
 
-Run these in memory — no prompts. Outputs feed the terminal menu in Step 5.
+Initialize `flow_metrics` in meta if absent (schema migration): `{"completions": [], "summary_interval": 5, "last_summary_at": 0}`.
 
-- **Impact scan.** Scan `tasks.json` for tasks that list the completed title in their `depends_on`. Collect up to 2 unblocked dependent titles by file order (highest-priority first). These become the first "Next:" candidates in the menu.
-- **RECOMMEND fill.** Run RECOMMEND Steps 3–4 against the remaining `tasks.json`. Collect titles until the combined "Next:" slot count reaches 2 (deduped against the impact-scan results). If the file is empty of actionable T1/T2 tasks, the menu falls back to the empty-state collapse rules below.
-- **Doc-change heuristic.** Check if the completed title or its captured description matches words like `design`, `architecture`, `schema`, `spec`, `refactor`, `rewrite`, or mentions structural change. Remember this flag for the summary line.
+### Step 2.5 — Capture batch gate (Rule 2 + Rule 3)
 
-### Step 5 — Terminal menu (MANDATORY, single `AskUserQuestion` call)
+Run the **Flush operation** from the Capture Batching section. This happens after the task is committed closed (Steps 1–2) but before the terminal menu. If no candidates are batched, this step is invisible.
 
-Before invoking the tool, print a one-line summary to chat:
+### Step 3 — Silent scans
 
-> Completed **[Title]**. Counter N/M.[ Unblocked: title1, title2.][ Design change — update Reference/ docs same-session.]
+Run in memory (no prompts). Feed results to Step 5 menu.
 
-Omit the Unblocked segment if no dependents. Omit the design-change segment if the heuristic did not fire.
+- **Impact scan:** Scan `tasks.json` for tasks with completed title in `depends_on`. Collect up to 2 unblocked dependents by file order → first "Next:" candidates.
+- **RECOMMEND fill:** Run RECOMMEND Steps 3–4 on remaining file. Collect until combined "Next:" slot count = 2 (deduped vs. impact scan). If empty: fallback to collapse rules.
+- **Doc-change heuristic:** Check if completed title/description matches `design|architecture|schema|spec|refactor|rewrite`. Flag for summary.
 
-Then issue **one** `AskUserQuestion` tool call. Header: `Next action`. Build up to 4 options in this priority order (stop at 4):
+### Step 4 — Terminal menu (MANDATORY)
 
-1. **Next: [title]** — first unblocked dependent (if Step 4 found one). Description = full title + tier. Picking this sets that task's `status` to `in_progress` in `tasks.json`.
-2. **Next: [title]** — second slot: next unblocked dependent OR top RECOMMEND pick. Same rule on pick.
-3. **Close session** — no next task picked. No further writes. This is a clean close.
-4. **Reopen [Title]** — revert Phase 1: restore the just-completed task to `in_progress`, strip the completion log line, decrement `meta.completions_since_reprioritization` by 1, write back. No further action after revert.
+Print one-line summary:
+> Completed **[Title]**. Counter N/M.[ Unblocked: title1, title2.][ Design change — update Reference/ docs.]
 
-**Collapse rules when fewer than 2 Next candidates exist:**
+Omit Unblocked if no dependents. Omit design-change if heuristic false.
 
-- One candidate: options = `Next: A`, `Close session`, `Reopen [Title]` (3 options).
-- Zero candidates (empty backlog): options = `Close session`, `Reopen [Title]` (2 options). After the user closes from an empty backlog, remind them to run EMPTY-STATE FLOW on next session start.
+Issue **one** `AskUserQuestion` call. Header: `Next action`. Build up to 4 options (priority order):
 
-**Single-focus invariant:** The menu picks at most ONE task to move to `in_progress`. Other unblocked dependents stay `pending` — the user can start them later by re-running RECOMMEND. Do not expand the menu into a multi-select; single-focus is what makes the next session clean.
+1. **Next: [title]** — first unblocked dependent (if found). Description = full title + tier. Pick → set `status: "in_progress"`.
+2. **Next: [title]** — second unblocked OR top RECOMMEND pick. Same on pick.
+3. **Close session** — no writes. Clean close.
+4. **Reopen [Title]** — restore to `in_progress`, strip log line via the **Strip log line on Reopen** row in **Log Access Routing**, decrement counter. Stop.
+
+**Collapse (fewer than 2 candidates):**
+- One: `Next: A` + `Close session` + `Reopen [Title]` (3 options).
+- Zero (empty): `Close session` + `Reopen [Title]` (2 options). Remind user to run EMPTY-STATE FLOW next session.
+
+**Single-focus:** Pick at most one task to `in_progress`. Other unblocked stay `pending` (user can start via RECOMMEND). Do not multi-select.
 
 **Resolution:**
-
-- **Next: picked** → write `status: "in_progress"` on the selected task. Session boundary: the user's next move is expected to be either closing the session (to start fresh on the picked task) or continuing inline if they explicitly say so. Do not auto-start work on the picked task.
+- **Next: picked** → write `status: "in_progress"`. Session boundary: user may close or continue inline.
 - **Close session** → no writes. Stop.
-- **Reopen [Title]** → revert Phase 1 (restore task, strip log line, decrement counter). Stop. Do not re-surface the terminal menu.
-
-### Removed from previous flow
-
-- ❌ **Reopen gate (pre-close)** — replaced by the post-close Reopen option in Step 5. The task is already committed closed before the menu appears; Reopen is an explicit revert, not a confirmation gate.
-- ❌ **Session boundary prompt** — folded into Step 5 "Close session" option.
-- ❌ **Reprioritize auto-suggest** — counter still increments for HEALTH, but no prompt. Invoke REPRIORITIZE manually.
-- ❌ **Multi-select unblocked promotion** — replaced by single-focus "Next:" pick in the terminal menu. RECOMMEND surfaces the rest next session.
+- **Reopen** → revert Phase 1. Stop. Do not re-surface menu.
 
 ---
 
 ## REPRIORITIZE
 
-The only flow that moves tasks within the single `tasks.json` stack. Reads the full file. Invoked manually — COMPLETE no longer auto-suggests it.
+Only flow that moves tasks within `tasks.json`. Reads full file. Default strategy: dependency-first. Invoked manually or by free-text override (e.g., "reprioritize tier-only").
 
-### Step 1 — Strategy
+### Step 1 — Analyze, sort, and print
 
-Present `AskUserQuestion` with options:
-- **"Dependency-first"** — sort by tier (T1 → T2 → T3 → Roadmap), then topologically by `depends_on` within each tier. Default.
-- **"Tier-only"** — sort by tier alone, preserving existing order within each tier.
-- **"Manual edit"** — user will reorder by hand in a follow-up turn.
+Read `tasks.json`. Sort by tier (T1 → T2 → T3 → Roadmap), then topologically by `depends_on` within each tier.
 
-Label: *"Which reprioritization strategy?"*
+**Constraint-aligned weighting:** Read `current_constraint` from meta. Within each tier, after topological sort by `depends_on`, apply a secondary sort: tasks with `constraint_alignment` of `elevates` or `exploits` sort above tasks with `subordinates` at the same dependency level. Tasks without `constraint_alignment` sort after `subordinates`.
 
-### Step 2 — Analyze and propose
-
-Read `tasks.json`. Analyze dependency chains. Build the proposed order in memory.
-
-Print the proposed order as a numbered prose list:
+Print applied order with alignment annotation:
 ```
-Proposed order:
-1. [Title] — T1
-2. [Title] — T1
-3. [Title] — T2
+Applied order:
+1. [Title] — T1 (elevates)
+2. [Title] — T1 (exploits)
+3. [Title] — T1 (subordinates)
+4. [Title] — T2 (elevates)
 ...
 ```
 
-Flag any orphaned dependencies (`depends_on` referencing titles not in the file) as warnings below the list.
+Flag orphaned dependencies (`depends_on` not in file) as warnings.
 
-### Step 3 — Confirm
+**Free-text override:** If user specifies "tier-only", sort by tier alone, preserve in-tier order. If "manual", print current order and let user reorder by hand.
 
-Present `AskUserQuestion` with options:
-- **"Apply"** — write the reordered array back to `tasks.json`.
-- **"Cancel"** — discard the proposed order, no change.
+### Step 2 — Write (auto-apply)
 
-Label: *"Apply this order?"*
+Rewrite `tasks.json` with the sorted array. Update `meta.last_reprioritized` and reset `meta.completions_since_reprioritization` to 0. Update `meta.last_updated` and `meta.last_updated_note` with `"reprioritized: dependency-first"`.
 
-### Step 4 — Write
-
-On Apply: rewrite `tasks.json` with the reordered array. Update `meta.last_reprioritized` and reset `meta.completions_since_reprioritization` to 0. Update `meta.last_updated` and `meta.last_updated_note` with `"reprioritized: [strategy]"`.
-
-**Do not write until the user confirms Apply.**
+No confirmation gate. User can object inline after seeing the printed order — revert by requesting a different strategy.
 
 ---
 
 ## REVIEW
 
-Show a formatted summary of the full backlog. Read `tasks.json` once.
+Show formatted summary of full backlog. Read `tasks.json` once.
 
-Output format:
+Output:
 ```
 ## tasks.json — N total tasks
 
@@ -530,7 +670,6 @@ Pending: [count] | In progress: [count] | Blocked: [count]
 2. [Title] — [status]
 
 ### T2
-1. [Title] — [status]
 ...
 
 ### T3
@@ -540,10 +679,10 @@ Pending: [count] | In progress: [count] | Blocked: [count]
 ...
 
 ## Dependency Chain Issues
-[any tasks with depends_on referencing non-existent titles — or "None" if clean]
+[orphaned depends_on — or "None" if clean]
 ```
 
-Title + tier + status only. Do not print descriptions. Do not present an `AskUserQuestion` at the end — REVIEW is informational.
+Title + tier + status only. No descriptions. No `AskUserQuestion` (informational).
 
 ---
 
@@ -551,17 +690,17 @@ Title + tier + status only. Do not print descriptions. Do not present an `AskUse
 
 Quick diagnostic. Read `tasks.json` once.
 
-Check for:
+Check:
 
-1. **Description bloat** — any description > 120 chars → list them.
-2. **Orphaned dependencies** — `depends_on` or `unblocks` referencing titles that do not exist in the file.
-3. **Stale in_progress** — tasks marked `in_progress` with no session activity (flag for user review).
-4. **File size** — if `tasks.json` exceeds 15 tasks, recommend a REPRIORITIZE + prune pass.
-5. **Counter state** — show `completions_since_reprioritization` value and configured threshold. If the counter is at or over the threshold, print a one-line suggestion to run REPRIORITIZE manually (informational only, no prompt).
-6. **Completion log** — if `tasks_completed.log` exists, show line count and date range covered.
-7. **Tier distribution** — count per tier, flag if any tier is empty or if T1 exceeds 5 (too many architectural items in flight).
+1. **Description bloat** — any description > 120 chars.
+2. **Orphaned dependencies** — `depends_on` or `unblocks` referencing non-existent titles.
+3. **Stale in_progress** — tasks marked `in_progress` with no recent activity.
+4. **File size** — if > 15 tasks, suggest REPRIORITIZE + prune.
+5. **Counter state** — show `completions_since_reprioritization` vs. threshold. If at/over, suggest REPRIORITIZE manually (info only).
+6. **Completion log** — if exists, report line count and most recent date via the **Get line count** and **Get most recent completion date** rows in **Log Access Routing**.
+7. **Tier distribution** — count per tier. Flag if empty or T1 > 5.
 
-Output as a compact diagnostic. Suggest fixes but do not auto-apply. No `AskUserQuestion` — HEALTH is informational.
+Output as compact diagnostic. Suggest fixes but no auto-apply. No `AskUserQuestion` (informational).
 
 ---
 
@@ -575,5 +714,5 @@ Output as a compact diagnostic. Suggest fixes but do not auto-apply. No `AskUser
 | "reprioritize" / "reorder" | REPRIORITIZE |
 | "show me the backlog" / "review tasks" | REVIEW |
 | "task health" / "any orphans" | HEALTH |
-| RECOMMEND surfaces empty T1/T2 | EMPTY-STATE FLOW |
-| User picks a roadmap item in empty state | PROMOTE FROM ROADMAP |
+| Zero actionable tasks at any tier | EMPTY-STATE FLOW |
+| User picks roadmap item in empty state | PROMOTE FROM ROADMAP |
