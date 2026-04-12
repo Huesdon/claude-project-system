@@ -12,8 +12,16 @@ description: >
   full", "add project brain", "set up knowledge base".
 ---
 
-# cps-setup — CPS Installer (rev 14)
+# cps-setup — CPS Installer (rev 15)
 
+> **Rev 15 (2026-04-11):** Step 3 prereq gate bumped from Python ≥3.10 to
+> ≥3.11 to match the Step 10 `numpy==2.4.4` pin (numpy dropped 3.10 support
+> in the 2.3 line). Added a Python-floor coupling note under the Step 10
+> pin block so the gate and pin stay in sync on future edits. Found during
+> a cps-setup test pass — gate accepted 3.10 but pip would have failed
+> mid-install on the numpy wheel. Lesson:
+> `Reference/Lessons/2026-04-11-cps-setup-numpy-python-floor.md`.
+>
 > **Rev 14 (2026-04-11):** Step 10 dependency install hardened. Rev 13 listed
 > only the three top-level deps (`sqlite-vec huggingface-hub tokenizers`); pip
 > resolved 18 transitive packages and the install hung mid-bootstrap on
@@ -177,8 +185,11 @@ Store as `profile ∈ {core, full, upgrade_core_to_full}`.
 **Any Full-path profile** (`full`, `upgrade_core_to_full`, `upgrade_runtime`,
 `reinstall`): run every time — no skip-on-upgrade.
 
-1. `python3 --version` → must be ≥ 3.10. Halt with install instructions if
-   lower or missing.
+1. `python3 --version` → must be ≥ 3.11. Halt with install instructions if
+   lower or missing. (Gate is 3.11, not 3.10, because the pinned `numpy==2.4.4`
+   below dropped Python 3.10 support in the 2.3 line. Keep the gate and the
+   numpy pin in sync — if you ever relax numpy to 2.2.x, drop the gate back
+   to 3.10 in the same edit.)
 2. Test write access — **use this exact pattern, no improvisation**:
 
    ```python
@@ -464,6 +475,11 @@ and re-run. Pre-warm pip cache before deploying CPS Full to a cold machine.
 `sqlite-vec` is intentionally unpinned — its release cadence is fast and the
 ABI is stable. Every other package is pinned because `numpy` 3.x or
 `onnxruntime` major bumps will silently break the runtime.
+
+**Python floor coupling:** `numpy==2.4.4` requires Python ≥ 3.11 (numpy
+dropped 3.10 support in the 2.3 line). The Step 3 prereq gate is held at
+≥ 3.11 to match. If you ever relax numpy to a 2.2.x pin, drop the gate
+back to 3.10 in the same edit.
 
 **After the install, verify imports in a subprocess** to confirm the wheels
 landed and are loadable. A successful `pip install` return code is not
