@@ -1,8 +1,8 @@
 {
   "meta": {
     "last_updated": "2026-04-11",
-    "last_updated_note": "completed: Add complexity field to task schema and ADD flow",
-    "completions_since_reprioritization": 12,
+    "last_updated_note": "completed: Move 3 plan buffer",
+    "completions_since_reprioritization": 13,
     "reprioritize_threshold": 10,
     "last_reprioritized": "2026-04-11",
     "reprioritization_strategy": "dependency-first",
@@ -26,6 +26,16 @@
           "cycle_time_days": 0,
           "captures_emitted": 0,
           "complexity": 1
+        },
+        {
+          "id": "t2-toc-move-3-plan-buffer",
+          "tier": "T2",
+          "constraint_alignment": "subordinates",
+          "started": "2026-04-11",
+          "completed": "2026-04-11",
+          "cycle_time_days": 0,
+          "captures_emitted": 0,
+          "complexity": 2
         }
       ],
       "summary_interval": 5,
@@ -77,20 +87,6 @@
       ],
       "unblocks": [],
       "constraint_alignment": "exploits",
-      "complexity": 2
-    },
-    {
-      "id": "t2-toc-move-3-plan-buffer",
-      "title": "Move 3 — Implement plan buffer: Haiku pre-stages cps-query hits before plan mode",
-      "tier": "T2",
-      "status": "in_progress",
-      "started_at": "2026-04-11",
-      "description": "Update task RECOMMEND to invoke Haiku cps-query against task domain; stage hits in plan_buffer.md or session scratch before Sonnet enters plan mode.",
-      "depends_on": [],
-      "unblocks": [
-        "t3-toc-move-7-buffer-penetration"
-      ],
-      "constraint_alignment": "subordinates",
       "complexity": 2
     },
     {
